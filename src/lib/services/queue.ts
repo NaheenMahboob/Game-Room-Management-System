@@ -1,5 +1,9 @@
 /**
  * Per-equipment wait queue join, list, and remove operations.
+ *
+ * The head of an unfulfilled queue holds a reservation once the item is free:
+ * only they may borrow it. Borrowing fulfills their entry and renumbers the
+ * rest; the next return reserves for the new head.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -68,7 +72,8 @@ export async function joinQueue(
 }
 
 /**
- * Marks a queue entry fulfilled (removed) without borrowing equipment.
+ * Marks a queue entry fulfilled (removed) without borrowing equipment and
+ * renumbers remaining positions so the next person becomes head (position 1).
  *
  * @param queueId - Open queue entry id
  * @param performedByUserId - Staff user removing the entry
@@ -88,13 +93,32 @@ export async function removeFromQueue(
       data: { fulfilled: true },
     });
 
+    // Keep positions dense after a manual remove.
+    const remaining = await tx.equipmentQueue.findMany({
+      where: { equipmentId: entry.equipmentId, fulfilled: false },
+      orderBy: { position: "asc" },
+    });
+    for (let i = 0; i < remaining.length; i++) {
+      const row = remaining[i]!;
+      const nextPosition = i + 1;
+      if (row.position !== nextPosition) {
+        await tx.equipmentQueue.update({
+          where: { id: row.id },
+          data: { position: nextPosition },
+        });
+      }
+    }
+
     await writeAuditLog(
       {
         actionType: AuditAction.QUEUE_REMOVED,
         performedByUserId,
         memberId: entry.memberId,
         equipmentId: entry.equipmentId,
-        details: { queueId },
+        details: {
+          queueId,
+          remainingInQueue: remaining.length,
+        },
       },
       tx
     );

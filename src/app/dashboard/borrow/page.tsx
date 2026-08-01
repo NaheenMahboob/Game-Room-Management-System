@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Volunteer borrow desk: select a signed-in member, pick free equipment, or
+ * join the wait queue. Items with a queue are reserved for the head until they
+ * borrow; after return the next head is reserved, shortening the queue each time.
+ */
+
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api/client";
@@ -11,7 +17,15 @@ type EquipmentItem = {
   label: string;
   type: string;
   conditionStatus: string;
+  /** Free and no queue — anyone may borrow. */
   available: boolean;
+  /** Free but queued — only this member may borrow next. */
+  reservedFor: {
+    memberId: string;
+    fullName: string;
+    queueLength: number;
+  } | null;
+  physicallyFree?: boolean;
   activeLoan: { member: { fullName: string } } | null;
   queueEntries: { id: string; member: { id: string; fullName: string } }[];
 };
@@ -56,8 +70,23 @@ function BorrowInner() {
     return Array.from(map.entries());
   }, [equipment]);
 
-  function toggle(id: string, available: boolean) {
-    if (!available) return;
+  /**
+   * Whether the currently selected member may borrow this item right now.
+   *
+   * @param item - Equipment row from the catalog
+   */
+  function canBorrow(item: EquipmentItem): boolean {
+    if (item.activeLoan) return false;
+    if (item.conditionStatus === "OUT_OF_ORDER") return false;
+    if (item.available) return true;
+    // Reserved: only the queue head may take it.
+    return Boolean(
+      item.reservedFor && memberId && item.reservedFor.memberId === memberId
+    );
+  }
+
+  function toggle(id: string, item: EquipmentItem) {
+    if (!canBorrow(item)) return;
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
@@ -111,16 +140,40 @@ function BorrowInner() {
   }
 
   function statusClass(item: EquipmentItem) {
-    if (item.conditionStatus === "OUT_OF_ORDER") return "border-red-500/60 bg-red-950/40 opacity-60";
+    if (item.conditionStatus === "OUT_OF_ORDER") {
+      return "border-red-500/60 bg-red-950/40 opacity-60";
+    }
     if (item.activeLoan) return "border-slate-600 bg-slate-800/80 opacity-70";
-    if (item.conditionStatus === "MINOR_ISSUE") return "border-amber-500/50 bg-amber-950/30";
+    if (item.reservedFor) {
+      if (canBorrow(item)) return "border-amber-400 bg-amber-950/40";
+      return "border-amber-500/40 bg-amber-950/20 opacity-80";
+    }
+    if (item.conditionStatus === "MINOR_ISSUE") {
+      return "border-amber-500/50 bg-amber-950/30";
+    }
     if (selectedIds.includes(item.id)) return "border-emerald-400 bg-emerald-950/40";
     return "border-emerald-600/40 bg-slate-900/70";
   }
 
+  function statusText(item: EquipmentItem) {
+    if (item.activeLoan) return `In use · ${item.activeLoan.member.fullName}`;
+    if (item.conditionStatus === "OUT_OF_ORDER") return "Out of order";
+    if (item.reservedFor) {
+      return `Reserved for ${item.reservedFor.fullName} · queue ${item.reservedFor.queueLength}`;
+    }
+    if (item.conditionStatus === "MINOR_ISSUE") return "Minor issue · available";
+    return "Available";
+  }
+
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-semibold">Borrow equipment</h1>
+      <div>
+        <h1 className="text-2xl font-semibold">Borrow equipment</h1>
+        <p className="text-sm text-slate-400">
+          When someone is waiting, a returned item stays reserved for the next
+          person in line until they borrow it — then the queue moves forward.
+        </p>
+      </div>
 
       <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
         <p className="mb-2 text-sm text-slate-400">Member</p>
@@ -158,6 +211,8 @@ function BorrowInner() {
               onClick={() => {
                 setMemberId(m.id);
                 setSelectedMember(m);
+                // Changing borrower invalidates selections that may be reserved for someone else.
+                setSelectedIds([]);
               }}
               className="min-h-12 rounded-xl bg-slate-800 px-3 font-medium"
             >
@@ -173,47 +228,58 @@ function BorrowInner() {
             {type.replaceAll("_", " ")}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((item: EquipmentItem) => (
-              <div
-                key={item.id}
-                className={`rounded-2xl border p-4 ${statusClass(item)}`}
-              >
-                <button
-                  type="button"
-                  disabled={!item.available}
-                  onClick={() => toggle(item.id, item.available)}
-                  className="w-full text-left"
+            {items.map((item: EquipmentItem) => {
+              const borrowable = canBorrow(item);
+              const showQueueButton =
+                Boolean(item.activeLoan) || Boolean(item.reservedFor);
+              return (
+                <div
+                  key={item.id}
+                  className={`rounded-2xl border p-4 ${statusClass(item)}`}
                 >
-                  <p className="font-semibold">{item.label}</p>
-                  <p className="mt-1 text-sm text-slate-300">
-                    {item.activeLoan
-                      ? `In use · ${item.activeLoan.member.fullName}`
-                      : item.conditionStatus === "OUT_OF_ORDER"
-                        ? "Out of order"
-                        : item.conditionStatus === "MINOR_ISSUE"
-                          ? "Minor issue · available"
-                          : "Available"}
-                  </p>
-                </button>
-                {item.activeLoan ? (
                   <button
                     type="button"
-                    onClick={() => addToQueue(item.id)}
-                    className="mt-3 min-h-12 w-full rounded-xl bg-slate-700 text-sm font-semibold"
+                    disabled={!borrowable}
+                    onClick={() => toggle(item.id, item)}
+                    className="w-full text-left disabled:cursor-not-allowed"
                   >
-                    Add to queue
-                    {item.queueEntries.length
-                      ? ` (${item.queueEntries.length})`
-                      : ""}
+                    <p className="font-semibold">{item.label}</p>
+                    <p className="mt-1 text-sm text-slate-300">
+                      {statusText(item)}
+                    </p>
+                    {item.reservedFor &&
+                    memberId &&
+                    item.reservedFor.memberId === memberId ? (
+                      <p className="mt-1 text-xs font-semibold text-amber-200">
+                        This member is next — tap to select
+                      </p>
+                    ) : null}
                   </button>
-                ) : null}
-                {item.queueEntries.length > 0 ? (
-                  <p className="mt-2 text-xs text-slate-400">
-                    Next: {item.queueEntries[0]?.member.fullName}
-                  </p>
-                ) : null}
-              </div>
-            ))}
+                  {showQueueButton ? (
+                    <button
+                      type="button"
+                      onClick={() => addToQueue(item.id)}
+                      className="mt-3 min-h-12 w-full rounded-xl bg-slate-700 text-sm font-semibold"
+                    >
+                      Add to queue
+                      {item.queueEntries.length
+                        ? ` (${item.queueEntries.length})`
+                        : ""}
+                    </button>
+                  ) : null}
+                  {item.queueEntries.length > 0 ? (
+                    <ol className="mt-2 list-decimal space-y-0.5 pl-4 text-xs text-slate-400">
+                      {item.queueEntries.map((entry, index) => (
+                        <li key={entry.id}>
+                          {index === 0 ? "Next: " : ""}
+                          {entry.member.fullName}
+                        </li>
+                      ))}
+                    </ol>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </section>
       ))}

@@ -1,5 +1,9 @@
 /**
  * Equipment catalog, borrow/return flows, availability, and condition updates.
+ *
+ * When an item has a wait queue, return does not free it for everyone: it is
+ * reserved for the head of the queue until that member borrows (their entry is
+ * then fulfilled and the next person becomes reserved after the next return).
  */
 
 import type { Prisma } from "@/generated/prisma";
@@ -19,6 +23,9 @@ type Db = Prisma.TransactionClient | typeof prisma;
 
 /**
  * Lists equipment with active loans, queue entries, availability, and time-limit alerts.
+ *
+ * `available` is true only when free and the wait queue is empty. When free but
+ * queued, `reservedFor` names the only member who may borrow next.
  *
  * @param options - Optional type filter and whether to include inactive items
  */
@@ -67,10 +74,31 @@ export async function listEquipment(options?: {
       }
     }
 
-    const available =
+    const queueEntries = item.queueEntries.map((entry) => ({
+      ...entry,
+      member: withClientPhotoUrl(entry.member),
+    }));
+    const queueHead = queueEntries[0] ?? null;
+
+    // Physically free: not on loan and not out of order.
+    const physicallyFree =
       item.isActive &&
       item.conditionStatus !== ConditionStatus.OUT_OF_ORDER &&
       !activeLoan;
+
+    // Open to anyone only when there is no wait queue.
+    const available = physicallyFree && queueEntries.length === 0;
+
+    // After return (or free with a queue), only the head may borrow.
+    const reservedFor =
+      physicallyFree && queueHead
+        ? {
+            memberId: queueHead.member.id,
+            fullName: queueHead.member.fullName,
+            queueEntryId: queueHead.id,
+            queueLength: queueEntries.length,
+          }
+        : null;
 
     return {
       ...item,
@@ -78,10 +106,7 @@ export async function listEquipment(options?: {
         ...loan,
         member: withClientPhotoUrl(loan.member),
       })),
-      queueEntries: item.queueEntries.map((entry) => ({
-        ...entry,
-        member: withClientPhotoUrl(entry.member),
-      })),
+      queueEntries,
       activeLoan: activeLoan
         ? {
             ...activeLoan,
@@ -89,6 +114,8 @@ export async function listEquipment(options?: {
           }
         : null,
       available,
+      reservedFor,
+      physicallyFree,
       loanMinutes,
       loanAlert,
       timeLimitMinutes: limit ?? null,
@@ -106,6 +133,7 @@ export async function getAvailabilityByType() {
       total: number;
       available: number;
       inUse: number;
+      reserved: number;
       good: number;
       minorIssue: number;
       outOfOrder: number;
@@ -118,6 +146,7 @@ export async function getAvailabilityByType() {
       total: 0,
       available: 0,
       inUse: 0,
+      reserved: 0,
       good: 0,
       minorIssue: 0,
       outOfOrder: 0,
@@ -127,6 +156,7 @@ export async function getAvailabilityByType() {
     if (item.conditionStatus === "MINOR_ISSUE") bucket.minorIssue += 1;
     if (item.conditionStatus === "OUT_OF_ORDER") bucket.outOfOrder += 1;
     if (item.activeLoan) bucket.inUse += 1;
+    else if (item.reservedFor) bucket.reserved += 1;
     else if (item.available) bucket.available += 1;
   }
 
@@ -134,7 +164,73 @@ export async function getAvailabilityByType() {
 }
 
 /**
+ * Fulfills the queue head for an equipment item and renumbers remaining entries.
+ *
+ * @param tx - Open transaction
+ * @param equipmentId - Equipment whose queue advances
+ * @param memberId - Member who must be the current head
+ * @param performedByUserId - Staff user for audit
+ */
+async function fulfillQueueHeadOnBorrow(
+  tx: Prisma.TransactionClient,
+  equipmentId: string,
+  memberId: string,
+  performedByUserId: string
+) {
+  const head = await tx.equipmentQueue.findFirst({
+    where: { equipmentId, fulfilled: false },
+    orderBy: { position: "asc" },
+  });
+  if (!head) return;
+
+  if (head.memberId !== memberId) {
+    throw new Error(
+      "This item is reserved for the next person in the wait queue"
+    );
+  }
+
+  await tx.equipmentQueue.update({
+    where: { id: head.id },
+    data: { fulfilled: true },
+  });
+
+  // Compact positions so the new head is always position 1.
+  const remaining = await tx.equipmentQueue.findMany({
+    where: { equipmentId, fulfilled: false },
+    orderBy: { position: "asc" },
+  });
+  for (let i = 0; i < remaining.length; i++) {
+    const entry = remaining[i]!;
+    const nextPosition = i + 1;
+    if (entry.position !== nextPosition) {
+      await tx.equipmentQueue.update({
+        where: { id: entry.id },
+        data: { position: nextPosition },
+      });
+    }
+  }
+
+  await writeAuditLog(
+    {
+      actionType: AuditAction.QUEUE_REMOVED,
+      performedByUserId,
+      memberId,
+      equipmentId,
+      details: {
+        queueId: head.id,
+        reason: "fulfilled_on_borrow",
+        remainingInQueue: remaining.length,
+      },
+    },
+    tx
+  );
+}
+
+/**
  * Checks out one or more items for a signed-in active member.
+ *
+ * If an item has a wait queue, only the head of that queue may borrow it;
+ * borrowing fulfills their entry and shortens the queue.
  *
  * @param memberId - Borrower member id
  * @param equipmentIds - Equipment to loan
@@ -183,6 +279,18 @@ export async function borrowEquipment(
         throw new Error(`${equipment.label} is already checked out`);
       }
 
+      // Enforce reservation: queue head only (no queue → anyone may borrow).
+      const queueHead = await tx.equipmentQueue.findFirst({
+        where: { equipmentId, fulfilled: false },
+        orderBy: { position: "asc" },
+        include: { member: { select: { fullName: true } } },
+      });
+      if (queueHead && queueHead.memberId !== memberId) {
+        throw new Error(
+          `${equipment.label} is reserved for ${queueHead.member.fullName} (next in queue)`
+        );
+      }
+
       const loan = await tx.loan.create({
         data: {
           memberId,
@@ -192,13 +300,26 @@ export async function borrowEquipment(
         include: { equipment: true },
       });
 
+      if (queueHead) {
+        await fulfillQueueHeadOnBorrow(
+          tx,
+          equipmentId,
+          memberId,
+          performedByUserId
+        );
+      }
+
       await writeAuditLog(
         {
           actionType: AuditAction.EQUIPMENT_BORROWED,
           performedByUserId,
           memberId,
           equipmentId,
-          details: { loanId: loan.id, label: equipment.label },
+          details: {
+            loanId: loan.id,
+            label: equipment.label,
+            fulfilledQueueEntryId: queueHead?.id ?? null,
+          },
         },
         tx
       );
@@ -244,6 +365,9 @@ async function applyReturnSideEffects(
 /**
  * Marks loans returned, applies return side effects, and writes audit entries.
  *
+ * Does not clear the wait queue: if anyone is waiting, the item becomes
+ * reserved for the current head until they borrow.
+ *
  * @param loanIds - Loans to close
  * @param performedByUserId - Staff user performing the return
  * @param conditionNotes - Optional notes shared across returned loans
@@ -283,6 +407,13 @@ export async function returnLoans(
         performedByUserId
       );
 
+      // Snapshot who the item is now reserved for (queue head), if anyone.
+      const nextInQueue = await tx.equipmentQueue.findFirst({
+        where: { equipmentId: loan.equipmentId, fulfilled: false },
+        orderBy: { position: "asc" },
+        include: { member: { select: { id: true, fullName: true } } },
+      });
+
       await writeAuditLog(
         {
           actionType: AuditAction.EQUIPMENT_RETURNED,
@@ -293,12 +424,22 @@ export async function returnLoans(
             loanId,
             conditionNotes: conditionNotes ?? null,
             label: loan.equipment.label,
+            reservedForMemberId: nextInQueue?.memberId ?? null,
+            reservedForName: nextInQueue?.member.fullName ?? null,
           },
         },
         tx
       );
 
-      returned.push(updated);
+      returned.push({
+        ...updated,
+        reservedFor: nextInQueue
+          ? {
+              memberId: nextInQueue.member.id,
+              fullName: nextInQueue.member.fullName,
+            }
+          : null,
+      });
     }
     return returned;
   };
