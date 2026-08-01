@@ -8,6 +8,7 @@
  * check-in request.
  */
 
+import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";
@@ -30,10 +31,10 @@ const deskMemberSelect = {
     orderBy: { signInTime: "desc" as const },
     select: { id: true, signInTime: true },
   },
-} as const;
+} satisfies Prisma.MemberSelect;
 
 /** Prisma filter: waiting to enter, or currently inside the room. */
-const deskRosterPresence = {
+const deskRosterPresence: Prisma.MemberWhereInput = {
   OR: [
     {
       checkInRequestedAt: { not: null },
@@ -41,20 +42,16 @@ const deskRosterPresence = {
     },
     { attendances: { some: { signOutTime: null } } },
   ],
-} as const;
+};
+
+type DeskMemberRow = Prisma.MemberGetPayload<{ select: typeof deskMemberSelect }>;
 
 /**
  * Sorts desk roster: waiting (oldest first), then inside (A–Z).
  *
  * @param members - Raw Prisma rows with open `attendances`
  */
-function sortDeskRoster<
-  T extends {
-    fullName: string;
-    checkInRequestedAt: Date | null;
-    attendances: unknown[];
-  },
->(members: T[]): T[] {
+function sortDeskRoster(members: DeskMemberRow[]): DeskMemberRow[] {
   return [...members].sort((a, b) => {
     const aInside = a.attendances.length > 0;
     const bInside = b.attendances.length > 0;
@@ -77,7 +74,7 @@ export async function listDeskRoster() {
   const members = await prisma.member.findMany({
     where: {
       membershipStatus: "ACTIVE",
-      ...deskRosterPresence,
+      AND: [deskRosterPresence],
     },
     select: deskMemberSelect,
   });
