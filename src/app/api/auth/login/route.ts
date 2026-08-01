@@ -108,14 +108,35 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (portal === "member" && user.role !== Role.MEMBER) {
-    recordRateLimitHit(ipKey);
-    recordRateLimitHit(emailKey);
-    linkLoginAttempt(emailKey, ipKey);
-    return NextResponse.json(
-      { error: "Use the volunteer/admin dashboard login for this account" },
-      { status: 403 }
-    );
+  // Portal login: any account with an ACTIVE member profile (incl. promoted staff).
+  if (portal === "member") {
+    if (!user.member) {
+      recordRateLimitHit(ipKey);
+      recordRateLimitHit(emailKey);
+      linkLoginAttempt(emailKey, ipKey);
+      return NextResponse.json(
+        {
+          error:
+            "No member profile on this account. Register first or use the volunteer desk.",
+        },
+        { status: 403 }
+      );
+    }
+    if (user.member.membershipStatus === "PENDING") {
+      return NextResponse.json(
+        {
+          error:
+            "Your registration is awaiting staff photo verification. Please try again later.",
+        },
+        { status: 403 }
+      );
+    }
+    if (user.member.membershipStatus === "INACTIVE") {
+      return NextResponse.json(
+        { error: "This membership is inactive. Contact the volunteer desk." },
+        { status: 403 }
+      );
+    }
   }
 
   if (
@@ -128,30 +149,6 @@ export async function POST(request: NextRequest) {
     linkLoginAttempt(emailKey, ipKey);
     return NextResponse.json(
       { error: "Use the member portal login for this account" },
-      { status: 403 }
-    );
-  }
-
-  // Self-registered members wait for staff photo approval.
-  if (
-    user.role === Role.MEMBER &&
-    user.member?.membershipStatus === "PENDING"
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "Your registration is awaiting staff photo verification. Please try again later.",
-      },
-      { status: 403 }
-    );
-  }
-
-  if (
-    user.role === Role.MEMBER &&
-    user.member?.membershipStatus === "INACTIVE"
-  ) {
-    return NextResponse.json(
-      { error: "This membership is inactive. Contact the volunteer desk." },
       { status: 403 }
     );
   }

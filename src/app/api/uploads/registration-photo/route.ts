@@ -11,6 +11,7 @@ import {
   parseMemberPhotoFormData,
   saveMemberPhotoFile,
 } from "@/lib/uploads/memberPhoto";
+import { scheduleOrphanRegistrationPhotoSweep } from "@/lib/uploads/orphanPhotos";
 import {
   checkRateLimit,
   recordRateLimitHit,
@@ -46,6 +47,8 @@ export async function POST(request: NextRequest) {
     const { buffer, mimeType } = await parseMemberPhotoFormData(formData);
     const photoUrl = await saveMemberPhotoFile(buffer, mimeType, "self");
     recordRateLimitHit(key, 15 * 60 * 1000);
+    // Opportunistic cleanup of abandoned mid-submit uploads.
+    scheduleOrphanRegistrationPhotoSweep();
     return jsonOk({ photoUrl }, 201);
   } catch (error) {
     return handleRouteError(error);

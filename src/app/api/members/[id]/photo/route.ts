@@ -9,9 +9,7 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
-import { writeAuditLog } from "@/lib/audit/log";
-import { AuditAction } from "@/lib/audit/actions";
-import { prisma } from "@/lib/prisma";
+import { isMemberSelf, isStaffRole } from "@/lib/auth/sessionAccess";
 import {
   deleteMemberPhotoIfStored,
   memberPhotoSrc,
@@ -20,20 +18,18 @@ import {
   saveMemberPhotoFile,
   withClientPhotoUrl,
 } from "@/lib/uploads/memberPhoto";
+import { writeAuditLog } from "@/lib/audit/log";
+import { AuditAction } from "@/lib/audit/actions";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Returns whether the session may access the given member's photo.
- *
- * @param session - Authenticated session from {@link withAuth}
- * @param memberId - Target member id
  */
 function canAccessMemberPhoto(
   session: { role: string; memberId?: string },
   memberId: string
 ): boolean {
-  const isStaff = session.role === "VOLUNTEER" || session.role === "ADMIN";
-  const isSelf = session.role === "MEMBER" && session.memberId === memberId;
-  return isStaff || isSelf;
+  return isStaffRole(session) || isMemberSelf(session, memberId);
 }
 
 /**
@@ -90,8 +86,7 @@ export const POST = withAuth(async ({ request, session }, rawParams) => {
       return jsonError("Forbidden", 403);
     }
 
-    const isSelf =
-      session.role === "MEMBER" && session.memberId === member.id;
+    const isSelf = isMemberSelf(session, member.id);
 
     const formData = await request.formData();
     const { buffer, mimeType } = await parseMemberPhotoFormData(formData);

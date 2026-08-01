@@ -15,7 +15,8 @@ export default async function PortalLayout({
   children: React.ReactNode;
 }) {
   const session = await getSession();
-  const showNav = session?.role === "MEMBER";
+  // Show portal chrome for anyone with a linked member profile (incl. staff).
+  const showNav = Boolean(session?.memberId);
 
   return (
     <ToastProvider>
@@ -25,7 +26,7 @@ export default async function PortalLayout({
             <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div>
                 <p className="font-semibold">Member portal</p>
-                <p className="text-xs text-slate-400">{session.email}</p>
+                <p className="text-xs text-slate-400">{session?.email}</p>
               </div>
               <nav className="flex flex-wrap gap-2">
                 {NAV.map((item) => (

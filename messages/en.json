@@ -54,6 +54,10 @@
     "syncing": "Syncing…",
     "queued": "{count} action(s) queued",
     "synced": "Offline actions synced",
-    "conflict": "Sync conflict — resolve manually"
+    "conflict": "Sync conflict — resolve manually",
+    "syncFailed": "Some offline actions failed",
+    "failed": "{count} failed",
+    "failedTitle": "Failed offline actions",
+    "dismiss": "Dismiss"
   }
 }

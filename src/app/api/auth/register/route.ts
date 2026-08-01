@@ -3,12 +3,14 @@
  *
  * Public member self-registration. Creates a PENDING account until staff
  * verifies the uploaded profile photo at the desk.
+ * If create fails after the photo was uploaded, the orphan `self-*` file is removed.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { selfRegisterMemberSchema } from "@/lib/validation/schemas";
 import { selfRegisterMember } from "@/lib/services/members";
+import { deleteOrphanRegistrationPhoto } from "@/lib/uploads/memberPhoto";
 import {
   checkRateLimit,
   loginIpKey,
@@ -25,6 +27,7 @@ function clientIp(request: NextRequest): string {
  * Registers a new member with chosen password; account stays PENDING.
  */
 export async function POST(request: NextRequest) {
+  let uploadedPhotoUrl: string | undefined;
   try {
     const ip = clientIp(request);
     const key = loginIpKey(`reg:${ip}`);
@@ -41,7 +44,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const input = selfRegisterMemberSchema.parse(body);
+    uploadedPhotoUrl = input.photoUrl;
+
     const result = await selfRegisterMember(input);
+    uploadedPhotoUrl = undefined; // owned by the new member row
     recordRateLimitHit(key, 60 * 60 * 1000);
 
     return jsonOk(
@@ -54,6 +60,10 @@ export async function POST(request: NextRequest) {
       201
     );
   } catch (error) {
+    // Upload-then-register: remove the file if the member row was never created.
+    if (uploadedPhotoUrl) {
+      await deleteOrphanRegistrationPhoto(uploadedPhotoUrl);
+    }
     return handleRouteError(error);
   }
 }

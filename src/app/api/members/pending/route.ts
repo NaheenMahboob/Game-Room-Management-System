@@ -28,7 +28,8 @@ const actionSchema = z.object({
 });
 
 /**
- * Approves or rejects a PENDING self-registration after photo review.
+ * Approves a PENDING self-registration, or rejects by deleting it so the
+ * person can register again. Closing the reject confirm leaves them pending.
  */
 export const PATCH = withRole(
   ["VOLUNTEER", "ADMIN"],
@@ -42,11 +43,11 @@ export const PATCH = withRole(
         );
         return jsonOk({ member });
       }
-      const member = await rejectMemberRegistration(
+      const result = await rejectMemberRegistration(
         body.memberId,
         session.sub
       );
-      return jsonOk({ member });
+      return jsonOk(result);
     } catch (error) {
       return handleRouteError(error);
     }

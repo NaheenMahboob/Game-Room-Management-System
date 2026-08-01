@@ -2,6 +2,8 @@
 
 /**
  * Volunteer/admin queue to approve self-registered members after reviewing photos.
+ * Reject deletes the registration (email/phone freed for a new attempt).
+ * Dismissing the reject confirmation leaves the request pending.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -37,13 +39,25 @@ export default function PendingMembersPage() {
   }, [refresh, toast]);
 
   async function act(memberId: string, action: "approve" | "reject") {
+    // Reject needs an explicit OK; Cancel / dismiss keeps them pending.
+    if (action === "reject") {
+      const confirmed = window.confirm(
+        "Reject and delete this registration?\n\nThey can register again with the same email and phone. Press Cancel to leave them pending."
+      );
+      if (!confirmed) return;
+    }
+
     setLoading(true);
     try {
       await apiFetch("/api/members/pending", {
         method: "PATCH",
         body: JSON.stringify({ memberId, action }),
       });
-      toast.push(action === "approve" ? "Member approved" : "Registration rejected");
+      toast.push(
+        action === "approve"
+          ? "Member approved"
+          : "Registration deleted — they can register again"
+      );
       await refresh();
     } catch (err) {
       toast.push(err instanceof Error ? err.message : "Failed", "error");
@@ -64,8 +78,9 @@ export default function PendingMembersPage() {
         </Link>
       </div>
       <p className="text-sm text-slate-400">
-        Self-registered members appear here until you confirm their photo matches
-        the person (or reject the request).
+        Self-registered members stay here until you approve. Reject deletes the
+        request so they can try again; cancel the confirm dialog to leave them
+        pending.
       </p>
 
       {members.length === 0 ? (

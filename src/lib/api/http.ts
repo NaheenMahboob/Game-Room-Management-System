@@ -17,7 +17,9 @@ export function handleRouteError(error: unknown) {
     return jsonError("Validation failed", 400, error.flatten());
   }
   if (error instanceof Error) {
-    return jsonError(error.message, 400);
+    // Business "not found" messages map to 404 for clearer API clients.
+    const notFound = /\bnot found\b/i.test(error.message);
+    return jsonError(error.message, notFound ? 404 : 400);
   }
   return jsonError("Unexpected server error", 500);
 }

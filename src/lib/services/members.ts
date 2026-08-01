@@ -6,7 +6,10 @@ import { AuditAction } from "@/lib/audit/actions";
 import { generateQrPayload, generateTempPassword } from "@/lib/members/ids";
 import { isMinor } from "@/lib/members/rules";
 import { getCurrentWaiverVersion } from "@/lib/settings";
-import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
+import {
+  deleteMemberPhotoIfStored,
+  withClientPhotoUrl,
+} from "@/lib/uploads/memberPhoto";
 import type { z } from "zod";
 import type {
   registerMemberSchema,
@@ -322,7 +325,8 @@ export async function approveMemberRegistration(
 }
 
 /**
- * Rejects a PENDING registration by marking membership INACTIVE.
+ * Rejects a PENDING registration by deleting the member + user (and photo).
+ * Frees email/phone so the person can self-register again.
  *
  * @param memberId - Pending member id
  * @param rejectedByUserId - Staff user rejecting
@@ -331,25 +335,38 @@ export async function rejectMemberRegistration(
   memberId: string,
   rejectedByUserId: string
 ) {
-  const existing = await prisma.member.findUnique({ where: { id: memberId } });
+  const existing = await prisma.member.findUnique({
+    where: { id: memberId },
+    include: { user: { select: { id: true, email: true } } },
+  });
   if (!existing) throw new Error("Member not found");
   if (existing.membershipStatus !== "PENDING") {
     throw new Error("Member is not awaiting verification");
   }
 
-  const member = await prisma.member.update({
-    where: { id: memberId },
-    data: { membershipStatus: "INACTIVE" },
-  });
-
+  // Audit before delete — memberId omitted so the FK does not block removal.
   await writeAuditLog({
     actionType: AuditAction.MEMBER_REJECTED,
     performedByUserId: rejectedByUserId,
-    memberId,
-    details: { previousStatus: "PENDING" },
+    details: {
+      previousStatus: "PENDING",
+      deleted: true,
+      memberId: existing.id,
+      fullName: existing.fullName,
+      phone: existing.phone,
+      email: existing.user.email,
+    },
   });
 
-  return withClientPhotoUrl(member);
+  await deleteMemberPhotoIfStored(existing.photoUrl);
+
+  // Member first (registeredBy may point at the same user), then the User row.
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.member.delete({ where: { id: memberId } });
+    await tx.user.delete({ where: { id: existing.userId } });
+  });
+
+  return { deleted: true as const, memberId };
 }
 
 type UpdateInput = z.infer<typeof updateMemberSchema>;

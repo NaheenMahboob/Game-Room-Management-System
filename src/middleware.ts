@@ -1,10 +1,9 @@
 /**
  * Edge middleware for portal and dashboard route guards.
  *
- * - Public: `/portal/login`, `/portal/register`, `/dashboard/login`
+ * - Portal: any authenticated user with `memberId` (members + promoted staff)
+ * - Dashboard: VOLUNTEER/ADMIN; admin suite still ADMIN-only
  * - Forces password change pages when JWT `mustChangePassword` is set
- *   (members → `/portal/change-password`, staff → `/dashboard/change-password`)
- * - Enforces MEMBER vs VOLUNTEER/ADMIN vs ADMIN for respective areas
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -48,10 +47,10 @@ export async function middleware(request: NextRequest) {
     if (!session) {
       return NextResponse.redirect(new URL("/portal/login", request.url));
     }
-    if (session.role !== "MEMBER") {
+    // Promoted volunteers/admins keep a member profile and may use the portal.
+    if (!session.memberId) {
       return NextResponse.redirect(new URL("/dashboard/login", request.url));
     }
-    // Force password change for members when admin reset the flag.
     if (session.mustChangePassword && !isPortalChangePassword) {
       return NextResponse.redirect(
         new URL("/portal/change-password", request.url)
@@ -82,7 +81,6 @@ export async function middleware(request: NextRequest) {
     if (session.role !== "VOLUNTEER" && session.role !== "ADMIN") {
       return NextResponse.redirect(new URL("/portal/login", request.url));
     }
-    // Same forced password change for volunteers/admins.
     if (session.mustChangePassword && !isDashboardChangePassword) {
       return NextResponse.redirect(
         new URL("/dashboard/change-password", request.url)

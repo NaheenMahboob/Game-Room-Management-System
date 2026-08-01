@@ -12,6 +12,7 @@ import {
   parseMemberPhotoFormData,
   saveMemberPhotoFile,
 } from "@/lib/uploads/memberPhoto";
+import { scheduleOrphanRegistrationPhotoSweep } from "@/lib/uploads/orphanPhotos";
 
 /**
  * Handles multipart photo upload for new member registration.
@@ -27,7 +28,7 @@ export const POST = withRole(
 
       // `reg` prefix distinguishes registration uploads from retakes.
       const photoUrl = await saveMemberPhotoFile(buffer, mimeType, "reg");
-
+      scheduleOrphanRegistrationPhotoSweep();
       return jsonOk({ photoUrl }, 201);
     } catch (error) {
       return handleRouteError(error);

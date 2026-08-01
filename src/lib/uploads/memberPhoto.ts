@@ -163,6 +163,21 @@ export async function deleteMemberPhotoIfStored(
 }
 
 /**
+ * Deletes a pre-registration upload (`self-*` / `reg-*`) when create-member fails.
+ * Ignores other filenames so a crafted body cannot remove unrelated photos.
+ *
+ * @param photoUrl - Filename returned by a registration photo upload endpoint
+ */
+export async function deleteOrphanRegistrationPhoto(
+  photoUrl: string | null | undefined
+): Promise<void> {
+  const filename = storedPhotoFilename(photoUrl);
+  if (!filename) return;
+  if (!/^(self|reg)-[\w.-]+\.(jpe?g|png|webp)$/i.test(filename)) return;
+  await deleteMemberPhotoIfStored(filename);
+}
+
+/**
  * Reads a stored photo file from disk for authenticated streaming.
  *
  * @param photoUrl - Value stored on `Member.photoUrl`

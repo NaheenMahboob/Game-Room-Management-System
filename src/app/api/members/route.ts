@@ -5,6 +5,7 @@ import {
   registerMemberSchema,
 } from "@/lib/validation/schemas";
 import { registerMember, searchMembers } from "@/lib/services/members";
+import { deleteOrphanRegistrationPhoto } from "@/lib/uploads/memberPhoto";
 
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   try {
@@ -23,13 +24,22 @@ export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   }
 });
 
+/**
+ * Desk registration. Cleans up the prior `reg-*` photo upload if create fails.
+ */
 export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
+  let uploadedPhotoUrl: string | undefined;
   try {
     const body = await request.json();
     const input = registerMemberSchema.parse(body);
+    uploadedPhotoUrl = input.photoUrl;
     const result = await registerMember(input, session.sub);
+    uploadedPhotoUrl = undefined;
     return jsonOk(result, 201);
   } catch (error) {
+    if (uploadedPhotoUrl) {
+      await deleteOrphanRegistrationPhoto(uploadedPhotoUrl);
+    }
     return handleRouteError(error);
   }
 });

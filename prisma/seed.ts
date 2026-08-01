@@ -85,6 +85,42 @@ async function main() {
 
   console.log(`Admin user ready: ${admin.email} (${admin.id})`);
 
+  // Bootstrap admin also has a member profile (placeholder photo) so they can
+  // use the member portal later; desk can replace the photo when convenient.
+  await prisma.member.upsert({
+    where: { userId: admin.id },
+    update: {
+      fullName: "Bootstrap Admin",
+      phone: "555-0001",
+      email: adminEmail,
+      emergencyContactName: "Mosque Office",
+      emergencyContactPhone: "555-0000",
+      photoUrl: "placeholder.jpg",
+      membershipStatus: "ACTIVE",
+      waiverSigned: true,
+      waiverSignedAt: new Date(),
+      waiverVersion: 1,
+      parentalConsent: true,
+      registeredByUserId: admin.id,
+    },
+    create: {
+      userId: admin.id,
+      fullName: "Bootstrap Admin",
+      phone: "555-0001",
+      email: adminEmail,
+      emergencyContactName: "Mosque Office",
+      emergencyContactPhone: "555-0000",
+      photoUrl: "placeholder.jpg",
+      membershipStatus: "ACTIVE",
+      waiverSigned: true,
+      waiverSignedAt: new Date(),
+      waiverVersion: 1,
+      parentalConsent: true,
+      qrPayload: "m_bootstrap_admin",
+      registeredByUserId: admin.id,
+    },
+  });
+
   const volunteerEmail =
     process.env.VOLUNTEER_EMAIL ?? "volunteer@mosque.local";
   const volunteerPassword =
@@ -105,6 +141,40 @@ async function main() {
   });
 
   console.log(`Volunteer user ready: ${volunteer.email} (${volunteer.id})`);
+
+  await prisma.member.upsert({
+    where: { userId: volunteer.id },
+    update: {
+      fullName: "Demo Volunteer",
+      phone: "555-0002",
+      email: volunteerEmail,
+      emergencyContactName: "Mosque Office",
+      emergencyContactPhone: "555-0000",
+      photoUrl: "placeholder.jpg",
+      membershipStatus: "ACTIVE",
+      waiverSigned: true,
+      waiverSignedAt: new Date(),
+      waiverVersion: 1,
+      parentalConsent: true,
+      registeredByUserId: admin.id,
+    },
+    create: {
+      userId: volunteer.id,
+      fullName: "Demo Volunteer",
+      phone: "555-0002",
+      email: volunteerEmail,
+      emergencyContactName: "Mosque Office",
+      emergencyContactPhone: "555-0000",
+      photoUrl: "placeholder.jpg",
+      membershipStatus: "ACTIVE",
+      waiverSigned: true,
+      waiverSignedAt: new Date(),
+      waiverVersion: 1,
+      parentalConsent: true,
+      qrPayload: "m_demo_volunteer",
+      registeredByUserId: admin.id,
+    },
+  });
 
   const memberEmail = process.env.MEMBER_EMAIL ?? "member@mosque.local";
   const memberPassword = process.env.MEMBER_PASSWORD ?? "ChangeMeMember123!";

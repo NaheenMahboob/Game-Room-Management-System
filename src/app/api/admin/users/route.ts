@@ -92,6 +92,41 @@ export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
       return jsonError("Nothing to update", 400);
     }
 
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) return jsonError("User not found", 404);
+
+    if (body.role && body.role !== existing.role) {
+      // Never change your own role (prevents locking yourself out mid-session).
+      if (id === session.sub) {
+        return jsonError("You cannot change your own role", 400);
+      }
+
+      const bootstrapEmail = (
+        process.env.ADMIN_EMAIL ?? "admin@mosque.local"
+      ).toLowerCase();
+      // Seed / env bootstrap admin must stay ADMIN.
+      if (
+        existing.email.toLowerCase() === bootstrapEmail &&
+        existing.role === "ADMIN" &&
+        body.role !== "ADMIN"
+      ) {
+        return jsonError(
+          "The bootstrap admin account cannot be demoted",
+          400
+        );
+      }
+
+      // Keep at least one ADMIN in the system.
+      if (existing.role === "ADMIN" && body.role !== "ADMIN") {
+        const adminCount = await prisma.user.count({
+          where: { role: "ADMIN" },
+        });
+        if (adminCount <= 1) {
+          return jsonError("Cannot demote the last admin account", 400);
+        }
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id },
       data,

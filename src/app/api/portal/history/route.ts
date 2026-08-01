@@ -1,8 +1,12 @@
-import { withRole } from "@/lib/auth/api";
+import { withAuth } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { prisma } from "@/lib/prisma";
 
-export const GET = withRole(["MEMBER"], async ({ session }) => {
+/**
+ * Member portal visit history. Allowed for any role that has a linked memberId
+ * (plain members and promoted volunteers/admins).
+ */
+export const GET = withAuth(async ({ session }) => {
   try {
     if (!session.memberId) {
       return jsonError("No member profile linked to this account", 400);

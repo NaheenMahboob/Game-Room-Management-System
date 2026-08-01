@@ -2,20 +2,35 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { getOfflineQueue } from "@/lib/offline/queue";
+import {
+  dismissFailedOfflineAction,
+  getFailedOfflineActions,
+  getOfflineQueue,
+  type FailedOfflineAction,
+} from "@/lib/offline/queue";
 import { syncOfflineQueue } from "@/lib/offline/sync";
 import { useToast } from "@/components/ui/Toast";
 
+/**
+ * Shows online/offline state, pending queue count, and failed sync actions
+ * staff can dismiss after resolving manually at the desk.
+ */
 export function ConnectionStatus() {
   const t = useTranslations("offline");
   const toast = useToast();
   const [online, setOnline] = useState(true);
   const [queued, setQueued] = useState(0);
+  const [failed, setFailed] = useState<FailedOfflineAction[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [showFailed, setShowFailed] = useState(false);
 
-  const refreshQueueCount = useCallback(async () => {
-    const q = await getOfflineQueue();
+  const refreshCounts = useCallback(async () => {
+    const [q, f] = await Promise.all([
+      getOfflineQueue(),
+      getFailedOfflineActions(),
+    ]);
     setQueued(q.length);
+    setFailed(f);
   }, []);
 
   const runSync = useCallback(async () => {
@@ -24,26 +39,31 @@ export function ConnectionStatus() {
     try {
       const { results, remaining } = await syncOfflineQueue();
       setQueued(remaining.length);
-      const conflicts = results.filter((r) => r.conflict);
+      const failedResults = results.filter((r) => !r.ok);
       const synced = results.filter((r) => r.ok).length;
       if (synced > 0) toast.push(t("synced"));
-      if (conflicts.length > 0) {
+      if (failedResults.length > 0) {
         toast.push(
-          `${t("conflict")}: ${conflicts.map((c) => c.error).join("; ")}`,
+          `${t("syncFailed")}: ${failedResults
+            .map((c) => c.error)
+            .filter(Boolean)
+            .join("; ")}`,
           "warn"
         );
+        setShowFailed(true);
       }
+      await refreshCounts();
     } catch (err) {
       toast.push(err instanceof Error ? err.message : "Sync failed", "error");
     } finally {
       setSyncing(false);
-      await refreshQueueCount();
+      await refreshCounts();
     }
-  }, [refreshQueueCount, t, toast]);
+  }, [refreshCounts, t, toast]);
 
   useEffect(() => {
     setOnline(navigator.onLine);
-    refreshQueueCount();
+    refreshCounts();
 
     const onOnline = () => {
       setOnline(true);
@@ -53,7 +73,7 @@ export function ConnectionStatus() {
 
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
-    const id = window.setInterval(refreshQueueCount, 5000);
+    const id = window.setInterval(refreshCounts, 5000);
 
     if (navigator.onLine) runSync();
 
@@ -62,7 +82,12 @@ export function ConnectionStatus() {
       window.removeEventListener("offline", onOffline);
       window.clearInterval(id);
     };
-  }, [refreshQueueCount, runSync]);
+  }, [refreshCounts, runSync]);
+
+  async function dismissFailed(id: string) {
+    await dismissFailedOfflineAction(id);
+    await refreshCounts();
+  }
 
   const label = syncing
     ? t("syncing")
@@ -71,7 +96,7 @@ export function ConnectionStatus() {
       : t("offline");
 
   return (
-    <div className="flex items-center gap-2 text-xs">
+    <div className="relative flex flex-wrap items-center gap-2 text-xs">
       <span
         className={`inline-flex min-h-10 items-center rounded-full px-3 font-semibold ${
           syncing
@@ -96,6 +121,41 @@ export function ConnectionStatus() {
         >
           {t("queued", { count: queued })}
         </button>
+      ) : null}
+      {failed.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setShowFailed((v) => !v)}
+          className="min-h-10 rounded-full bg-red-900/50 px-3 font-semibold text-red-200"
+        >
+          {t("failed", { count: failed.length })}
+        </button>
+      ) : null}
+
+      {showFailed && failed.length > 0 ? (
+        <div className="absolute right-0 top-12 z-40 w-80 rounded-xl border border-red-800 bg-slate-950 p-3 shadow-xl">
+          <p className="mb-2 font-semibold text-red-200">{t("failedTitle")}</p>
+          <ul className="max-h-60 space-y-2 overflow-y-auto">
+            {failed.map((item) => (
+              <li
+                key={item.id}
+                className="rounded-lg border border-slate-700 bg-slate-900/80 p-2"
+              >
+                <p className="font-medium text-slate-200">
+                  {item.type.replaceAll("_", " ")}
+                </p>
+                <p className="mt-1 text-red-300">{item.error}</p>
+                <button
+                  type="button"
+                  onClick={() => dismissFailed(item.id)}
+                  className="mt-2 min-h-9 rounded-lg bg-slate-700 px-3 font-semibold"
+                >
+                  {t("dismiss")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </div>
   );

@@ -1,5 +1,6 @@
 import { withAuth } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
+import { isMemberSelf, isStaffRole } from "@/lib/auth/sessionAccess";
 import { updateMemberSchema } from "@/lib/validation/schemas";
 import { getMemberById, updateMember } from "@/lib/services/members";
 
@@ -9,7 +10,8 @@ export const GET = withAuth(async ({ session }, rawParams) => {
     const member = await getMemberById(params.id);
     if (!member) return jsonError("Member not found", 404);
 
-    if (session.role === "MEMBER" && session.memberId !== member.id) {
+    // Staff may view any member; others only their own linked profile.
+    if (!isStaffRole(session) && !isMemberSelf(session, member.id)) {
       return jsonError("Forbidden", 403);
     }
 
@@ -25,19 +27,18 @@ export const PATCH = withAuth(async ({ request, session }, rawParams) => {
     const member = await getMemberById(params.id);
     if (!member) return jsonError("Member not found", 404);
 
-    const isStaff =
-      session.role === "VOLUNTEER" || session.role === "ADMIN";
-    const isSelf =
-      session.role === "MEMBER" && session.memberId === member.id;
+    const staff = isStaffRole(session);
+    const self = isMemberSelf(session, member.id);
 
-    if (!isStaff && !isSelf) {
+    if (!staff && !self) {
       return jsonError("Forbidden", 403);
     }
 
     const body = await request.json();
     const input = updateMemberSchema.parse(body);
 
-    if (isSelf) {
+    // Self-edits (including promoted staff on the portal) cannot change status.
+    if (self) {
       const selfSafe = { ...input };
       delete selfSafe.membershipStatus;
       const updated = await updateMember(

@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
     sub: user.id,
     role: user.role,
     memberId: user.member?.id,
+    // Keep forced password-change flag in sync with the database.
+    mustChangePassword: user.mustChangePassword,
   };
 
   const [accessToken, newRefreshToken] = await Promise.all([
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest) {
       email: user.email,
       role: user.role,
       memberId: user.member?.id ?? null,
+      mustChangePassword: user.mustChangePassword,
     },
   });
 

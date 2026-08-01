@@ -2,6 +2,7 @@
 
 import { apiFetch } from "@/lib/api/client";
 import {
+  addFailedOfflineAction,
   enqueueOfflineAction,
   getOfflineQueue,
   removeOfflineAction,
@@ -74,6 +75,10 @@ export type SyncResult = {
   data?: unknown;
 };
 
+/**
+ * Replays the offline queue. Successful items are removed; failures move to the
+ * failed list so staff can see the error and dismiss (instead of infinite retry).
+ */
 export async function syncOfflineQueue(): Promise<{
   results: SyncResult[];
   remaining: OfflineAction[];
@@ -81,14 +86,22 @@ export async function syncOfflineQueue(): Promise<{
   const queue = await getOfflineQueue();
   if (queue.length === 0) return { results: [], remaining: [] };
 
+  const byId = new Map(queue.map((a) => [a.id, a]));
+
   const response = await apiFetch<{ results: SyncResult[] }>("/api/sync", {
     method: "POST",
     body: JSON.stringify({ actions: queue }),
   });
 
   for (const result of response.results) {
+    const action = byId.get(result.id);
     if (result.ok) {
       await removeOfflineAction(result.id);
+      continue;
+    }
+    if (action) {
+      await removeOfflineAction(result.id);
+      await addFailedOfflineAction(action, result.error ?? "Sync failed");
     }
   }
 

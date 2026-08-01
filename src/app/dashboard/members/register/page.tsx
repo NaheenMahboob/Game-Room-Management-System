@@ -30,6 +30,8 @@ export default function RegisterMemberPage() {
     loginEmail: string;
     temporaryPassword: string;
   } | null>(null);
+  /** Done stays disabled until credentials are copied. */
+  const [credentialsCopied, setCredentialsCopied] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
     phone: "",
@@ -80,6 +82,7 @@ export default function RegisterMemberPage() {
         loginEmail: result.loginEmail,
         temporaryPassword: result.temporaryPassword,
       });
+      setCredentialsCopied(false);
     } catch (err) {
       toast.push(err instanceof Error ? err.message : "Registration failed", "error");
     } finally {
@@ -123,9 +126,10 @@ export default function RegisterMemberPage() {
         </h1>
         <p className="text-slate-300">
           Copy these credentials for {credentials.fullName}. They must change
-          the password on first portal login.
+          the password on first portal login. Copy before continuing — the temp
+          password will not be shown again.
         </p>
-        <div className="rounded-xl bg-slate-950 p-4 font-mono text-sm">
+        <div className="select-all rounded-xl bg-slate-950 p-4 font-mono text-sm">
           <p>Email: {credentials.loginEmail}</p>
           <p>Temp password: {credentials.temporaryPassword}</p>
         </div>
@@ -134,17 +138,31 @@ export default function RegisterMemberPage() {
             type="button"
             className="min-h-12 rounded-xl bg-emerald-600 px-5 font-semibold"
             onClick={async () => {
-              await navigator.clipboard.writeText(
-                `Email: ${credentials.loginEmail}\nTemp password: ${credentials.temporaryPassword}`
-              );
-              toast.push("Copied to clipboard");
+              try {
+                await navigator.clipboard.writeText(
+                  `Email: ${credentials.loginEmail}\nTemp password: ${credentials.temporaryPassword}`
+                );
+                setCredentialsCopied(true);
+                toast.push("Copied — you can continue when ready");
+              } catch {
+                toast.push(
+                  "Could not copy — select and copy the password manually",
+                  "error"
+                );
+              }
             }}
           >
-            Copy credentials
+            {credentialsCopied ? "Copied" : "Copy credentials"}
           </button>
           <button
             type="button"
-            className="min-h-12 rounded-xl bg-slate-700 px-5 font-semibold"
+            disabled={!credentialsCopied}
+            title={
+              credentialsCopied
+                ? undefined
+                : "Copy credentials before continuing"
+            }
+            className="min-h-12 rounded-xl bg-slate-700 px-5 font-semibold disabled:cursor-not-allowed disabled:opacity-40"
             onClick={() =>
               router.push(
                 `/dashboard/members?memberId=${credentials.memberId}`

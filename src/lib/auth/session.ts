@@ -20,6 +20,7 @@ export async function getSession(): Promise<Session | null> {
       id: true,
       email: true,
       role: true,
+      mustChangePassword: true,
       member: { select: { id: true } },
     },
   });
@@ -31,6 +32,7 @@ export async function getSession(): Promise<Session | null> {
     email: user.email,
     role: user.role,
     memberId: user.member?.id,
+    mustChangePassword: user.mustChangePassword,
   };
 }
 

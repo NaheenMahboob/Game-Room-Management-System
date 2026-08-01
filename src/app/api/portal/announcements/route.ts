@@ -1,9 +1,13 @@
-import { withRole } from "@/lib/auth/api";
+import { withAuth } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { getMemberAnnouncements } from "@/lib/services/publicBoard";
 
-export const GET = withRole(["MEMBER"], async () => {
+/** Announcements for the member portal (any role with a linked member profile). */
+export const GET = withAuth(async ({ session }) => {
   try {
+    if (!session.memberId) {
+      return jsonOk({ announcements: [] });
+    }
     const announcements = await getMemberAnnouncements();
     return jsonOk({ announcements });
   } catch (error) {

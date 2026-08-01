@@ -130,6 +130,11 @@ export async function borrowEquipment(
   const member = await prisma.member.findUnique({ where: { id: memberId } });
   if (!member) throw new Error("Member not found");
   if (member.membershipStatus !== "ACTIVE") {
+    if (member.membershipStatus === "PENDING") {
+      throw new Error(
+        "Registration is still awaiting photo verification"
+      );
+    }
     throw new Error("Membership is inactive");
   }
 

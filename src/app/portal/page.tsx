@@ -4,7 +4,8 @@ import { PortalProfileClient } from "@/components/portal/PortalProfileClient";
 
 export default async function PortalHomePage() {
   const session = await getSession();
-  if (!session || session.role !== "MEMBER" || !session.memberId) {
+  // Any role with a linked member profile may use the portal (incl. staff).
+  if (!session?.memberId) {
     redirect("/portal/login");
   }
 
