@@ -4,19 +4,20 @@
  * Webcam / file picker used during registration and photo retake flows.
  * Emits a local `data:` URL preview; callers upload via
  * {@link uploadMemberPhotoDataUrl} before persisting a member record.
+ * Supports clearing the preview with an X so the user can re-capture.
  */
 
 import { useEffect, useRef, useState } from "react";
 
 type PhotoCaptureProps = {
-  /** Current preview (`data:` URL) or `null` when empty. */
+  /** Current preview (`data:` URL / API path) or `null` when empty. */
   value: string | null;
-  /** Called with a JPEG/PNG data URL after capture or file select. */
-  onChange: (dataUrl: string) => void;
+  /** Called with a JPEG/PNG data URL after capture/file select, or `null` on clear. */
+  onChange: (dataUrl: string | null) => void;
 };
 
 /**
- * Tablet-friendly photo capture control with camera and file fallbacks.
+ * Tablet-friendly photo capture control with camera, file upload, and clear.
  *
  * @param props - Controlled preview value and change handler
  */
@@ -24,15 +25,30 @@ export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
-  /** Live MediaStream — stopped on capture, unmount, or cancel. */
+  /** Live MediaStream — stopped on capture, clear, unmount, or cancel. */
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     return () => {
-      // Release the camera when the component unmounts.
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
+
+  /** Stops any live camera tracks. */
+  function stopStream() {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setStreaming(false);
+  }
+
+  /**
+   * Clears the preview so the user can capture or upload again.
+   */
+  function clearPhoto() {
+    stopStream();
+    onChange(null);
+    setError(null);
+  }
 
   /**
    * Requests front-facing camera access and starts the preview video.
@@ -69,11 +85,8 @@ export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
     if (!ctx) return;
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    // 0.85 quality balances size vs clarity for desk verification.
     onChange(canvas.toDataURL("image/jpeg", 0.85));
-
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    setStreaming(false);
+    stopStream();
   }
 
   /**
@@ -94,12 +107,22 @@ export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
     <div className="space-y-3 rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
       <p className="text-sm font-semibold text-slate-200">Profile photo *</p>
       {value ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={value}
-          alt="Member preview"
-          className="h-40 w-40 rounded-xl object-cover"
-        />
+        <div className="relative inline-block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={value}
+            alt="Member preview"
+            className="h-40 w-40 rounded-xl object-cover"
+          />
+          <button
+            type="button"
+            onClick={clearPhoto}
+            aria-label="Remove photo"
+            className="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-lg font-bold text-white shadow-lg hover:bg-red-500"
+          >
+            ×
+          </button>
+        </div>
       ) : null}
       {streaming ? (
         <video
@@ -109,34 +132,40 @@ export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
           playsInline
         />
       ) : null}
-      <div className="flex flex-wrap gap-2">
-        {!streaming ? (
-          <button
-            type="button"
-            onClick={startCamera}
-            className="min-h-12 rounded-xl bg-slate-700 px-4 font-semibold"
-          >
-            Open camera
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={capture}
-            className="min-h-12 rounded-xl bg-emerald-600 px-4 font-semibold"
-          >
-            Capture photo
-          </button>
-        )}
-        <label className="min-h-12 cursor-pointer rounded-xl bg-slate-700 px-4 py-3 font-semibold">
-          Upload file
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
-      </div>
+      {!value ? (
+        <div className="flex flex-wrap gap-2">
+          {!streaming ? (
+            <button
+              type="button"
+              onClick={startCamera}
+              className="min-h-12 rounded-xl bg-slate-700 px-4 font-semibold"
+            >
+              Open camera
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={capture}
+              className="min-h-12 rounded-xl bg-emerald-600 px-4 font-semibold"
+            >
+              Capture photo
+            </button>
+          )}
+          <label className="min-h-12 cursor-pointer rounded-xl bg-slate-700 px-4 py-3 font-semibold">
+            Upload file
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+        </div>
+      ) : (
+        <p className="text-sm text-slate-400">
+          Photo ready — remove with × to choose a different one.
+        </p>
+      )}
       {error ? <p className="text-sm text-amber-300">{error}</p> : null}
     </div>
   );

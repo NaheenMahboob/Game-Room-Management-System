@@ -3,7 +3,8 @@
 /**
  * Volunteer desk registration form.
  * Uploads the profile photo to private storage first, then creates the member
- * with the returned storage filename (never a base64 data URL or public path).
+ * with the returned storage filename. Shows a persistent credentials panel
+ * (email + temp password) that must be dismissed before leaving.
  */
 
 import { FormEvent, useState } from "react";
@@ -15,15 +16,20 @@ import { PhotoCapture } from "@/components/dashboard/PhotoCapture";
 import { SignaturePad } from "@/components/dashboard/SignaturePad";
 
 /**
- * Multi-step registration UI: details → photo → waiver → submit.
+ * Multi-step registration UI: details → photo → waiver → credentials panel.
  */
 export default function RegisterMemberPage() {
   const toast = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  /** Local camera/file preview (`data:` URL) before server upload. */
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [signature, setSignature] = useState("");
+  const [credentials, setCredentials] = useState<{
+    memberId: string;
+    fullName: string;
+    loginEmail: string;
+    temporaryPassword: string;
+  } | null>(null);
   const [form, setForm] = useState({
     fullName: "",
     phone: "",
@@ -34,11 +40,6 @@ export default function RegisterMemberPage() {
     parentalConsent: false,
   });
 
-  /**
-   * Uploads the photo, then POSTs member registration with the stored path.
-   *
-   * @param e - Form submit event
-   */
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!photoPreview) {
@@ -52,7 +53,6 @@ export default function RegisterMemberPage() {
 
     setLoading(true);
     try {
-      // Persist the image first so registerMemberSchema receives a path.
       const photoUrl = await uploadMemberPhotoDataUrl(
         photoPreview,
         "/api/uploads/member-photo"
@@ -74,10 +74,12 @@ export default function RegisterMemberPage() {
         }),
       });
 
-      toast.push(
-        `Registered ${result.member.fullName}. Temp password: ${result.temporaryPassword}`
-      );
-      router.push(`/dashboard/members?memberId=${result.member.id}`);
+      setCredentials({
+        memberId: result.member.id,
+        fullName: result.member.fullName,
+        loginEmail: result.loginEmail,
+        temporaryPassword: result.temporaryPassword,
+      });
     } catch (err) {
       toast.push(err instanceof Error ? err.message : "Registration failed", "error");
     } finally {
@@ -85,14 +87,6 @@ export default function RegisterMemberPage() {
     }
   }
 
-  /**
-   * Renders a labeled input bound to a `form` field key.
-   *
-   * @param key - Form state key
-   * @param label - Visible label text
-   * @param type - HTML input type
-   * @param required - Whether the field is required
-   */
   function field(
     key: keyof typeof form,
     label: string,
@@ -121,6 +115,49 @@ export default function RegisterMemberPage() {
     );
   }
 
+  if (credentials) {
+    return (
+      <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-emerald-500/40 bg-slate-900/80 p-6">
+        <h1 className="text-2xl font-semibold text-emerald-400">
+          Member registered
+        </h1>
+        <p className="text-slate-300">
+          Copy these credentials for {credentials.fullName}. They must change
+          the password on first portal login.
+        </p>
+        <div className="rounded-xl bg-slate-950 p-4 font-mono text-sm">
+          <p>Email: {credentials.loginEmail}</p>
+          <p>Temp password: {credentials.temporaryPassword}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="min-h-12 rounded-xl bg-emerald-600 px-5 font-semibold"
+            onClick={async () => {
+              await navigator.clipboard.writeText(
+                `Email: ${credentials.loginEmail}\nTemp password: ${credentials.temporaryPassword}`
+              );
+              toast.push("Copied to clipboard");
+            }}
+          >
+            Copy credentials
+          </button>
+          <button
+            type="button"
+            className="min-h-12 rounded-xl bg-slate-700 px-5 font-semibold"
+            onClick={() =>
+              router.push(
+                `/dashboard/members?memberId=${credentials.memberId}`
+              )
+            }
+          >
+            Done — open member
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-5">
       <h1 className="text-2xl font-semibold">Register new member</h1>
@@ -128,7 +165,7 @@ export default function RegisterMemberPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         {field("fullName", "Full name *")}
         {field("phone", "Phone *", "tel")}
-        {field("email", "Email (optional)", "email", false)}
+        {field("email", "Email (recommended)", "email", false)}
         {field("dateOfBirth", "Date of birth", "date", false)}
         {field("emergencyContactName", "Emergency contact name *")}
         {field("emergencyContactPhone", "Emergency contact phone *", "tel")}
@@ -150,7 +187,7 @@ export default function RegisterMemberPage() {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !photoPreview}
         className="min-h-12 w-full rounded-xl bg-emerald-600 text-lg font-semibold disabled:opacity-60"
       >
         {loading ? "Saving…" : "Complete registration"}

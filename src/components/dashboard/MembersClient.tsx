@@ -252,6 +252,12 @@ export function MembersClient() {
         >
           Register new member
         </Link>
+        <Link
+          href="/dashboard/members/pending"
+          className="min-h-12 rounded-xl bg-amber-500 px-5 py-3 font-semibold text-slate-950"
+        >
+          Pending verifications
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-2">

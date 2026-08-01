@@ -10,6 +10,7 @@ import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 import type { z } from "zod";
 import type {
   registerMemberSchema,
+  selfRegisterMemberSchema,
   updateMemberSchema,
 } from "@/lib/validation/schemas";
 
@@ -91,9 +92,21 @@ export async function getMemberByQr(qrPayload: string) {
 }
 
 type RegisterInput = z.infer<typeof registerMemberSchema>;
+type SelfRegisterInput = z.infer<typeof selfRegisterMemberSchema>;
+
+async function assertUniquePhoneAndEmail(phone: string, email: string) {
+  const existingPhone = await prisma.member.findUnique({ where: { phone } });
+  if (existingPhone) {
+    throw new Error("A member with this phone number already exists.");
+  }
+  const existingEmail = await prisma.user.findUnique({ where: { email } });
+  if (existingEmail) {
+    throw new Error("A user with this email already exists.");
+  }
+}
 
 /**
- * Creates a member user account, stores the uploaded photo filename, and audits.
+ * Desk registration by volunteer/admin — ACTIVE immediately (photo verified in person).
  *
  * @param input - Validated registration payload (`photoUrl` = storage filename)
  * @param registeredByUserId - Staff user performing registration
@@ -115,17 +128,7 @@ export async function registerMember(
     );
   }
 
-  const existingPhone = await prisma.member.findUnique({
-    where: { phone: input.phone },
-  });
-  if (existingPhone) {
-    throw new Error("A member with this phone number already exists.");
-  }
-
-  const existingEmail = await prisma.user.findUnique({ where: { email } });
-  if (existingEmail) {
-    throw new Error("A user with this email already exists.");
-  }
+  await assertUniquePhoneAndEmail(input.phone, email);
 
   const tempPassword = generateTempPassword();
   const passwordHash = await hashPassword(tempPassword);
@@ -138,6 +141,7 @@ export async function registerMember(
           email,
           passwordHash,
           role: "MEMBER",
+          mustChangePassword: true,
         },
       });
 
@@ -150,6 +154,7 @@ export async function registerMember(
           emergencyContactName: input.emergencyContactName,
           emergencyContactPhone: input.emergencyContactPhone,
           photoUrl: input.photoUrl,
+          membershipStatus: "ACTIVE",
           dateOfBirth: dob,
           waiverSigned: true,
           waiverSignedAt: new Date(),
@@ -157,6 +162,8 @@ export async function registerMember(
           parentalConsent: dob && isMinor(dob) ? input.parentalConsent : true,
           qrPayload,
           registeredByUserId,
+          approvedByUserId: registeredByUserId,
+          approvedAt: new Date(),
         },
       });
 
@@ -170,6 +177,7 @@ export async function registerMember(
             phone: member.phone,
             waiverVersion,
             waiverSignature: input.waiverSignature,
+            source: "desk",
           },
         },
         tx
@@ -184,6 +192,164 @@ export async function registerMember(
     temporaryPassword: tempPassword,
     loginEmail: email,
   };
+}
+
+/**
+ * Member self-registration — PENDING until staff verifies the uploaded photo.
+ *
+ * @param input - Form fields including password and photo filename
+ */
+export async function selfRegisterMember(input: SelfRegisterInput) {
+  const waiverVersion = await getCurrentWaiverVersion();
+  const email = input.email.toLowerCase();
+  const dob = input.dateOfBirth ? new Date(input.dateOfBirth) : null;
+  if (dob && isMinor(dob) && !input.parentalConsent) {
+    throw new Error(
+      "Parental consent is required for members under 18 before registration can complete."
+    );
+  }
+
+  await assertUniquePhoneAndEmail(input.phone, email);
+
+  const passwordHash = await hashPassword(input.password);
+  const qrPayload = generateQrPayload();
+
+  const result = await prisma.$transaction(
+    async (tx: Prisma.TransactionClient) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          role: "MEMBER",
+          mustChangePassword: false,
+        },
+      });
+
+      // Self-registered: registeredBy points at the new user until staff approves.
+      const member = await tx.member.create({
+        data: {
+          userId: user.id,
+          fullName: input.fullName,
+          phone: input.phone,
+          email,
+          emergencyContactName: input.emergencyContactName,
+          emergencyContactPhone: input.emergencyContactPhone,
+          photoUrl: input.photoUrl,
+          membershipStatus: "PENDING",
+          dateOfBirth: dob,
+          waiverSigned: true,
+          waiverSignedAt: new Date(),
+          waiverVersion,
+          parentalConsent: dob && isMinor(dob) ? input.parentalConsent : true,
+          qrPayload,
+          registeredByUserId: user.id,
+        },
+      });
+
+      await writeAuditLog(
+        {
+          actionType: AuditAction.MEMBER_REGISTERED,
+          performedByUserId: user.id,
+          memberId: member.id,
+          details: {
+            fullName: member.fullName,
+            phone: member.phone,
+            waiverVersion,
+            source: "self",
+            pendingPhotoVerification: true,
+          },
+        },
+        tx
+      );
+
+      return { user, member };
+    }
+  );
+
+  return {
+    member: withClientPhotoUrl(result.member),
+    loginEmail: email,
+  };
+}
+
+/**
+ * Lists members awaiting staff photo verification.
+ */
+export async function listPendingMembers() {
+  const members = await prisma.member.findMany({
+    where: { membershipStatus: "PENDING" },
+    orderBy: { createdAt: "asc" },
+    include: {
+      user: { select: { id: true, email: true } },
+    },
+  });
+  return members.map((m) => withClientPhotoUrl(m));
+}
+
+/**
+ * Approves a PENDING self-registration after staff reviews the photo.
+ *
+ * @param memberId - Pending member id
+ * @param approvedByUserId - Volunteer/admin performing approval
+ */
+export async function approveMemberRegistration(
+  memberId: string,
+  approvedByUserId: string
+) {
+  const existing = await prisma.member.findUnique({ where: { id: memberId } });
+  if (!existing) throw new Error("Member not found");
+  if (existing.membershipStatus !== "PENDING") {
+    throw new Error("Member is not awaiting verification");
+  }
+
+  const member = await prisma.member.update({
+    where: { id: memberId },
+    data: {
+      membershipStatus: "ACTIVE",
+      approvedByUserId,
+      approvedAt: new Date(),
+    },
+  });
+
+  await writeAuditLog({
+    actionType: AuditAction.MEMBER_APPROVED,
+    performedByUserId: approvedByUserId,
+    memberId,
+    details: { previousStatus: "PENDING" },
+  });
+
+  return withClientPhotoUrl(member);
+}
+
+/**
+ * Rejects a PENDING registration by marking membership INACTIVE.
+ *
+ * @param memberId - Pending member id
+ * @param rejectedByUserId - Staff user rejecting
+ */
+export async function rejectMemberRegistration(
+  memberId: string,
+  rejectedByUserId: string
+) {
+  const existing = await prisma.member.findUnique({ where: { id: memberId } });
+  if (!existing) throw new Error("Member not found");
+  if (existing.membershipStatus !== "PENDING") {
+    throw new Error("Member is not awaiting verification");
+  }
+
+  const member = await prisma.member.update({
+    where: { id: memberId },
+    data: { membershipStatus: "INACTIVE" },
+  });
+
+  await writeAuditLog({
+    actionType: AuditAction.MEMBER_REJECTED,
+    performedByUserId: rejectedByUserId,
+    memberId,
+    details: { previousStatus: "PENDING" },
+  });
+
+  return withClientPhotoUrl(member);
 }
 
 type UpdateInput = z.infer<typeof updateMemberSchema>;

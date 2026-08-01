@@ -3,6 +3,9 @@
  *
  * Authenticates a user for the member portal or volunteer/admin dashboard.
  * Failed attempts are rate-limited per client IP and per email.
+ * Members with PENDING photo verification cannot log in yet.
+ * Users with mustChangePassword receive cookies but the client redirects
+ * them to change-password (works for MEMBER, VOLUNTEER, and ADMIN).
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -34,7 +37,6 @@ const loginSchema = z.object({
 function clientIp(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) {
-    // First hop is the original client when behind a reverse proxy.
     return forwarded.split(",")[0]!.trim() || "unknown";
   }
   return request.headers.get("x-real-ip")?.trim() || "unknown";
@@ -44,7 +46,7 @@ function clientIp(request: NextRequest): string {
  * Logs a user in and sets HTTP-only auth cookies when credentials and portal
  * role checks succeed.
  *
- * @returns `200` with user summary, `401`/`403` on auth failure, `429` when limited
+ * @returns `200` with user summary (includes mustChangePassword), or error status
  */
 export async function POST(request: NextRequest) {
   let body: unknown;
@@ -68,7 +70,6 @@ export async function POST(request: NextRequest) {
   const ipKey = loginIpKey(ip);
   const emailKey = loginEmailKey(normalizedEmail);
 
-  // Block before expensive bcrypt work when either bucket is exhausted.
   const ipLimit = checkRateLimit(ipKey);
   const emailLimit = checkRateLimit(emailKey);
   if (!ipLimit.allowed || !emailLimit.allowed) {
@@ -90,7 +91,9 @@ export async function POST(request: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
-    include: { member: { select: { id: true } } },
+    include: {
+      member: { select: { id: true, membershipStatus: true } },
+    },
   });
 
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
@@ -124,7 +127,30 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Successful auth resets both buckets so occasional typos don't linger.
+  // Self-registered members wait for staff photo approval.
+  if (
+    user.role === Role.MEMBER &&
+    user.member?.membershipStatus === "PENDING"
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Your registration is awaiting staff photo verification. Please try again later.",
+      },
+      { status: 403 }
+    );
+  }
+
+  if (
+    user.role === Role.MEMBER &&
+    user.member?.membershipStatus === "INACTIVE"
+  ) {
+    return NextResponse.json(
+      { error: "This membership is inactive. Contact the volunteer desk." },
+      { status: 403 }
+    );
+  }
+
   clearRateLimit(ipKey);
   clearRateLimit(emailKey);
 
@@ -132,6 +158,7 @@ export async function POST(request: NextRequest) {
     sub: user.id,
     role: user.role,
     memberId: user.member?.id,
+    mustChangePassword: user.mustChangePassword,
   };
 
   const [accessToken, refreshToken] = await Promise.all([
@@ -145,6 +172,7 @@ export async function POST(request: NextRequest) {
       email: user.email,
       role: user.role,
       memberId: user.member?.id ?? null,
+      mustChangePassword: user.mustChangePassword,
     },
   });
 

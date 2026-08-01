@@ -1,3 +1,9 @@
+/**
+ * Admin user management API.
+ * GET supports optional `q` search. PATCH updates role or flags password reset.
+ * Creating users by email alone is not supported — promote existing accounts.
+ */
+
 import { z } from "zod";
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
@@ -5,30 +11,46 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
 import { writeAuditLog } from "@/lib/audit/log";
 import { generateTempPassword } from "@/lib/members/ids";
-
-const createUserSchema = z.object({
-  email: z.string().email(),
-  role: z.enum(["VOLUNTEER", "ADMIN"]),
-  password: z.string().min(8).optional(),
-});
+import { clearRateLimit, loginEmailKey } from "@/lib/auth/rateLimit";
 
 const updateUserSchema = z.object({
   role: z.enum(["MEMBER", "VOLUNTEER", "ADMIN"]).optional(),
   resetPassword: z.boolean().optional(),
-  newPassword: z.string().min(8).optional(),
 });
 
-export const GET = withRole(["ADMIN"], async () => {
+const userSelect = {
+  id: true,
+  email: true,
+  role: true,
+  mustChangePassword: true,
+  createdAt: true,
+  member: { select: { id: true, fullName: true, membershipStatus: true } },
+} as const;
+
+/**
+ * Lists or searches existing users for role/password management.
+ *
+ * @returns `{ users }` matching optional `q` (email or member name)
+ */
+export const GET = withRole(["ADMIN"], async ({ request }) => {
   try {
+    const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
     const users = await prisma.user.findMany({
+      where: q
+        ? {
+            OR: [
+              { email: { contains: q, mode: "insensitive" } },
+              {
+                member: {
+                  fullName: { contains: q, mode: "insensitive" },
+                },
+              },
+            ],
+          }
+        : undefined,
       orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        member: { select: { id: true, fullName: true } },
-      },
+      take: q ? 50 : 100,
+      select: userSelect,
     });
     return jsonOk({ users });
   } catch (error) {
@@ -36,32 +58,13 @@ export const GET = withRole(["ADMIN"], async () => {
   }
 });
 
-export const POST = withRole(["ADMIN"], async ({ request, session }) => {
-  try {
-    const body = createUserSchema.parse(await request.json());
-    const email = body.email.toLowerCase();
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) return jsonError("Email already in use", 409);
-
-    const password = body.password ?? generateTempPassword();
-    const passwordHash = await hashPassword(password);
-    const user = await prisma.user.create({
-      data: { email, role: body.role, passwordHash },
-      select: { id: true, email: true, role: true, createdAt: true },
-    });
-
-    await writeAuditLog({
-      actionType: "USER_CREATED",
-      performedByUserId: session.sub,
-      details: { userId: user.id, email: user.email, role: user.role },
-    });
-
-    return jsonOk({ user, temporaryPassword: password }, 201);
-  } catch (error) {
-    return handleRouteError(error);
-  }
-});
-
+/**
+ * Updates an existing user's role and/or resets their password.
+ * Password reset also clears the email login rate-limit bucket so the user
+ * can immediately try the new temporary credentials.
+ *
+ * @returns Updated user and optional `temporaryPassword` when reset
+ */
 export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const url = new URL(request.url);
@@ -69,21 +72,36 @@ export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
     if (!id) return jsonError("id query param required", 400);
 
     const body = updateUserSchema.parse(await request.json());
-    const data: { role?: "MEMBER" | "VOLUNTEER" | "ADMIN"; passwordHash?: string } =
-      {};
+    const data: {
+      role?: "MEMBER" | "VOLUNTEER" | "ADMIN";
+      passwordHash?: string;
+      mustChangePassword?: boolean;
+    } = {};
     let temporaryPassword: string | undefined;
 
     if (body.role) data.role = body.role;
-    if (body.resetPassword || body.newPassword) {
-      temporaryPassword = body.newPassword ?? generateTempPassword();
+
+    // Flag any role for forced password change on next successful login.
+    if (body.resetPassword) {
+      temporaryPassword = generateTempPassword();
       data.passwordHash = await hashPassword(temporaryPassword);
+      data.mustChangePassword = true;
+    }
+
+    if (!body.role && !body.resetPassword) {
+      return jsonError("Nothing to update", 400);
     }
 
     const user = await prisma.user.update({
       where: { id },
       data,
-      select: { id: true, email: true, role: true, createdAt: true },
+      select: userSelect,
     });
+
+    // Let them log in again even if prior failed attempts locked the email key.
+    if (body.resetPassword) {
+      clearRateLimit(loginEmailKey(user.email));
+    }
 
     await writeAuditLog({
       actionType: "USER_UPDATED",
@@ -92,6 +110,8 @@ export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
         userId: user.id,
         role: body.role ?? null,
         passwordReset: Boolean(temporaryPassword),
+        mustChangePassword: Boolean(body.resetPassword),
+        rateLimitCleared: Boolean(body.resetPassword),
       },
     });
 

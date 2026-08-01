@@ -1,6 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+/**
+ * Admin users page: search existing accounts and change roles / reset passwords.
+ * Does not create users from a bare email.
+ */
+
+import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/Toast";
 
@@ -8,51 +13,40 @@ type User = {
   id: string;
   email: string;
   role: string;
+  mustChangePassword: boolean;
   createdAt: string;
-  member: { id: string; fullName: string } | null;
+  member: {
+    id: string;
+    fullName: string;
+    membershipStatus: string;
+  } | null;
 };
 
 export default function AdminUsersPage() {
   const toast = useToast();
   const [users, setUsers] = useState<User[]>([]);
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"VOLUNTEER" | "ADMIN">("VOLUNTEER");
+  const [q, setQ] = useState("");
+  const [tempCred, setTempCred] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
 
-  async function refresh() {
-    const data = await apiFetch<{ users: User[] }>("/api/admin/users");
+  async function refresh(search = q) {
+    const query = search.trim()
+      ? `?q=${encodeURIComponent(search.trim())}`
+      : "";
+    const data = await apiFetch<{ users: User[] }>(`/api/admin/users${query}`);
     setUsers(data.users);
   }
 
   useEffect(() => {
-    refresh().catch((err) =>
+    refresh("").catch((err) =>
       toast.push(err instanceof Error ? err.message : "Load failed", "error")
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
 
-  async function createUser(e: FormEvent) {
-    e.preventDefault();
-    try {
-      const data = await apiFetch<{
-        user: User;
-        temporaryPassword: string;
-      }>("/api/admin/users", {
-        method: "POST",
-        body: JSON.stringify({ email, role }),
-      });
-      toast.push(
-        `Created ${data.user.email}. Temp password: ${data.temporaryPassword}`
-      );
-      setEmail("");
-      await refresh();
-    } catch (err) {
-      toast.push(err instanceof Error ? err.message : "Failed", "error");
-    }
-  }
-
-  async function updateUser(
-    id: string,
-    body: Record<string, unknown>
-  ) {
+  async function updateUser(id: string, body: Record<string, unknown>) {
     try {
       const data = await apiFetch<{
         user: User;
@@ -62,7 +56,11 @@ export default function AdminUsersPage() {
         body: JSON.stringify(body),
       });
       if (data.temporaryPassword) {
-        toast.push(`New password: ${data.temporaryPassword}`);
+        setTempCred({
+          email: data.user.email,
+          password: data.temporaryPassword,
+        });
+        toast.push("Password reset — copy the temporary password below");
       } else {
         toast.push("User updated");
       }
@@ -75,34 +73,62 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-5">
       <h2 className="text-xl font-semibold">Users</h2>
+      <p className="text-sm text-slate-400">
+        Search for an existing account, then change its role or reset its
+        password. New members register via the portal or volunteer desk — you
+        cannot invent accounts from an email alone.
+      </p>
 
-      <form
-        onSubmit={createUser}
-        className="flex flex-wrap gap-2 rounded-2xl border border-slate-700 bg-slate-900/60 p-4"
-      >
+      <div className="flex flex-wrap gap-2">
         <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="volunteer@mosque.local"
-          className="min-h-11 min-w-[220px] flex-1 rounded-xl border border-slate-600 bg-slate-950 px-3"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && refresh()}
+          placeholder="Search email or member name"
+          className="min-h-11 min-w-[240px] flex-1 rounded-xl border border-slate-600 bg-slate-950 px-3"
         />
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value as "VOLUNTEER" | "ADMIN")}
-          className="min-h-11 rounded-xl border border-slate-600 bg-slate-950 px-3"
-        >
-          <option value="VOLUNTEER">VOLUNTEER</option>
-          <option value="ADMIN">ADMIN</option>
-        </select>
         <button
-          type="submit"
-          className="min-h-11 rounded-xl bg-amber-500 px-4 font-semibold text-slate-950"
+          type="button"
+          onClick={() => refresh()}
+          className="min-h-11 rounded-xl bg-slate-700 px-4 font-semibold"
         >
-          Create user
+          Search
         </button>
-      </form>
+      </div>
+
+      {tempCred ? (
+        <div className="rounded-2xl border border-amber-500/50 bg-amber-950/30 p-4">
+          <p className="font-semibold text-amber-200">Temporary password</p>
+          <p className="mt-1 text-sm text-slate-300">
+            Give this to the user. On their next sign-in they must set a new
+            password (works for members, volunteers, and admins).
+          </p>
+          <p className="mt-3 font-mono text-sm">
+            {tempCred.email}
+            <br />
+            {tempCred.password}
+          </p>
+          <button
+            type="button"
+            className="mt-3 min-h-10 rounded-xl bg-amber-500 px-4 text-sm font-semibold text-slate-950"
+            onClick={async () => {
+              await navigator.clipboard.writeText(
+                `Email: ${tempCred.email}\nTemp password: ${tempCred.password}`
+              );
+              toast.push("Copied");
+            }}
+          >
+            Copy
+          </button>
+          <button
+            type="button"
+            className="ml-2 min-h-10 rounded-xl bg-slate-700 px-4 text-sm font-semibold"
+            onClick={() => setTempCred(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
       <ul className="space-y-2">
         {users.map((user) => (
@@ -114,7 +140,10 @@ export default function AdminUsersPage() {
               <p className="font-semibold">{user.email}</p>
               <p className="text-sm text-slate-400">
                 {user.role}
-                {user.member ? ` · member ${user.member.fullName}` : ""}
+                {user.member
+                  ? ` · ${user.member.fullName} (${user.member.membershipStatus})`
+                  : ""}
+                {user.mustChangePassword ? " · must change password" : ""}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

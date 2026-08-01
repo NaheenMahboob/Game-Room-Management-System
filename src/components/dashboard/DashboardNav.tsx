@@ -22,6 +22,7 @@ export function DashboardNav({
   const NAV = [
     { href: "/dashboard", label: t("home") },
     { href: "/dashboard/members", label: t("members") },
+    { href: "/dashboard/members/pending", label: "Pending" },
     { href: "/dashboard/borrow", label: t("borrow") },
     { href: "/dashboard/return", label: t("return") },
     { href: "/dashboard/attendance", label: t("inside") },

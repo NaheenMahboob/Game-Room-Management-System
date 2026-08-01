@@ -36,6 +36,21 @@ export const registerMemberSchema = z.object({
   parentalConsent: z.boolean().default(false),
 });
 
+/**
+ * Public self-registration: same fields as desk register plus required email/password.
+ * Creates a PENDING member until staff verifies the photo.
+ */
+export const selfRegisterMemberSchema = registerMemberSchema.extend({
+  email: z.string().trim().email(),
+  password: z.string().min(8).max(128),
+});
+
+/** Change password after admin reset / forced update. */
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8).max(128),
+});
+
 /** Query params for member search. */
 export const memberSearchSchema = z.object({
   q: z.string().trim().min(1).max(100).optional(),
@@ -48,7 +63,7 @@ export const updateMemberSchema = z.object({
   email: z.string().trim().email().optional().or(z.literal("")).optional(),
   emergencyContactName: z.string().trim().min(2).max(120).optional(),
   emergencyContactPhone: z.string().trim().min(7).max(30).optional(),
-  membershipStatus: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  membershipStatus: z.enum(["PENDING", "ACTIVE", "INACTIVE"]).optional(),
 });
 
 /**

@@ -86,7 +86,7 @@ export function recordRateLimitHit(
 }
 
 /**
- * Clears the bucket for `key` (e.g. after a successful login).
+ * Clears the bucket for `key` (e.g. after a successful login or admin password reset).
  *
  * @param key - Namespaced rate-limit key
  */

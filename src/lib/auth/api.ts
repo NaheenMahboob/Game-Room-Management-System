@@ -29,6 +29,7 @@ async function resolveSession(
       id: true,
       email: true,
       role: true,
+      mustChangePassword: true,
       member: { select: { id: true } },
     },
   });
@@ -40,6 +41,7 @@ async function resolveSession(
     email: user.email,
     role: user.role,
     memberId: user.member?.id,
+    mustChangePassword: user.mustChangePassword,
   };
 }
 

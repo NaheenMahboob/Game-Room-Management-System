@@ -11,6 +11,8 @@ export type SessionPayload = {
   sub: string;
   role: Role;
   memberId?: string;
+  /** When true, user must complete change-password before using the app. */
+  mustChangePassword?: boolean;
 };
 
 export type AccessTokenClaims = SessionPayload & JWTPayload & { typ: "access" };
@@ -20,6 +22,7 @@ export async function signAccessToken(payload: SessionPayload): Promise<string> 
   return new SignJWT({
     role: payload.role,
     memberId: payload.memberId,
+    mustChangePassword: Boolean(payload.mustChangePassword),
     typ: "access",
   })
     .setProtectedHeader({ alg: "HS256" })
@@ -33,6 +36,7 @@ export async function signRefreshToken(payload: SessionPayload): Promise<string>
   return new SignJWT({
     role: payload.role,
     memberId: payload.memberId,
+    mustChangePassword: Boolean(payload.mustChangePassword),
     typ: "refresh",
   })
     .setProtectedHeader({ alg: "HS256" })

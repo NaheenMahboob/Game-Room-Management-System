@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 
 type Portal = "member" | "dashboard";
 
@@ -13,6 +14,10 @@ type LoginFormProps = {
   redirectTo: string;
 };
 
+/**
+ * Email/password login. Redirects to change-password when the account was
+ * flagged for reset (members, volunteers, and admins).
+ */
 export function LoginForm({
   portal,
   title,
@@ -38,10 +43,23 @@ export function LoginForm({
         body: JSON.stringify({ email, password, portal }),
       });
 
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as {
+        error?: string;
+        user?: { mustChangePassword?: boolean; role?: string };
+      };
 
       if (!response.ok) {
         setError(data.error ?? "Login failed");
+        return;
+      }
+
+      if (data.user?.mustChangePassword) {
+        const dest =
+          portal === "member"
+            ? "/portal/change-password"
+            : "/dashboard/change-password";
+        router.push(dest);
+        router.refresh();
         return;
       }
 
@@ -100,6 +118,18 @@ export function LoginForm({
           {loading ? t("signingIn") : t("signIn")}
         </button>
       </form>
+
+      {portal === "member" ? (
+        <p className="mt-6 text-center text-sm text-slate-400">
+          New here?{" "}
+          <Link
+            href="/portal/register"
+            className="font-semibold text-emerald-400 hover:underline"
+          >
+            Register as a member
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

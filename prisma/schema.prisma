@@ -33,7 +33,9 @@ enum ConditionStatus {
   OUT_OF_ORDER
 }
 
+// PENDING = self-registered, awaiting staff photo verification.
 enum MembershipStatus {
+  PENDING
   ACTIVE
   INACTIVE
 }
@@ -45,11 +47,13 @@ enum TargetAudience {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(MEMBER)
-  createdAt    DateTime @default(now())
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  passwordHash       String
+  role               Role     @default(MEMBER)
+  // When true, next successful login must set a new password before using the app.
+  mustChangePassword Boolean  @default(false)
+  createdAt          DateTime @default(now())
 
   member              Member?
   attendancesSignedIn Attendance[]      @relation("SignedInBy")
@@ -63,6 +67,7 @@ model User {
   shifts              Shift[]
   shiftChecklists     ShiftChecklist[]
   membersRegistered   Member[]          @relation("RegisteredBy")
+  membersApproved     Member[]          @relation("ApprovedBy")
 }
 
 model Member {
@@ -84,6 +89,10 @@ model Member {
   qrPayload              String           @unique
   registeredByUserId     String
   registeredBy           User             @relation("RegisteredBy", fields: [registeredByUserId], references: [id])
+  // Staff who approved a self-registration photo (null until approved).
+  approvedByUserId       String?
+  approvedBy             User?            @relation("ApprovedBy", fields: [approvedByUserId], references: [id])
+  approvedAt             DateTime?
   createdAt              DateTime         @default(now())
 
   attendances Attendance[]

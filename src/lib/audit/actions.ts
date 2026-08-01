@@ -7,6 +7,10 @@ export const AuditAction = {
   MEMBER_UPDATED: "MEMBER_UPDATED",
   /** Staff or self replaced a member profile photo on disk. */
   MEMBER_PHOTO_UPDATED: "MEMBER_PHOTO_UPDATED",
+  /** Staff approved a PENDING self-registration after photo review. */
+  MEMBER_APPROVED: "MEMBER_APPROVED",
+  /** Staff rejected a PENDING self-registration. */
+  MEMBER_REJECTED: "MEMBER_REJECTED",
   SIGN_IN: "SIGN_IN",
   SIGN_OUT: "SIGN_OUT",
   FORCE_SIGN_OUT: "FORCE_SIGN_OUT",
