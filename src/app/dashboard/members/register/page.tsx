@@ -145,10 +145,21 @@ export default function RegisterMemberPage() {
                 setCredentialsCopied(true);
                 toast.push("Copied — you can continue when ready");
               } catch {
-                toast.push(
-                  "Could not copy — select and copy the password manually",
-                  "error"
+                const ok = window.confirm(
+                  "Clipboard copy failed. Have you written down or selected the temporary password?\n\nOK = yes, enable Done. Cancel = stay on this panel."
                 );
+                if (ok) {
+                  setCredentialsCopied(true);
+                  toast.push(
+                    "Done enabled — password will not be shown again",
+                    "warn"
+                  );
+                } else {
+                  toast.push(
+                    "Select the password text and copy it manually, then try Copy again",
+                    "error"
+                  );
+                }
               }
             }}
           >

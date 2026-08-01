@@ -38,6 +38,7 @@ export async function searchMembers(q: string, limit = 20) {
       fullName: true,
       phone: true,
       photoUrl: true,
+      pendingPhotoUrl: true,
       membershipStatus: true,
       qrPayload: true,
       userId: true,
@@ -367,6 +368,90 @@ export async function rejectMemberRegistration(
   });
 
   return { deleted: true as const, memberId };
+}
+
+/**
+ * Lists ACTIVE members who submitted a self-service photo retake.
+ */
+export async function listPendingPhotoRetakes() {
+  const members = await prisma.member.findMany({
+    where: { pendingPhotoUrl: { not: null } },
+    orderBy: { createdAt: "asc" },
+    include: {
+      user: { select: { id: true, email: true } },
+    },
+  });
+  return members.map((m) => withClientPhotoUrl(m));
+}
+
+/**
+ * Approves a pending photo retake: pending becomes live; previous live file deleted.
+ */
+export async function approvePendingPhoto(
+  memberId: string,
+  approvedByUserId: string
+) {
+  const existing = await prisma.member.findUnique({ where: { id: memberId } });
+  if (!existing) throw new Error("Member not found");
+  if (!existing.pendingPhotoUrl) {
+    throw new Error("No pending photo retake for this member");
+  }
+
+  const previousLive = existing.photoUrl;
+  const pending = existing.pendingPhotoUrl;
+
+  const member = await prisma.member.update({
+    where: { id: memberId },
+    data: {
+      photoUrl: pending,
+      pendingPhotoUrl: null,
+    },
+  });
+
+  await deleteMemberPhotoIfStored(previousLive);
+
+  await writeAuditLog({
+    actionType: AuditAction.MEMBER_PHOTO_APPROVED,
+    performedByUserId: approvedByUserId,
+    memberId,
+    details: { previousPhotoUrl: previousLive, photoUrl: pending },
+  });
+
+  return withClientPhotoUrl(member);
+}
+
+/**
+ * Rejects a pending photo retake: deletes pending file; live photo unchanged.
+ */
+export async function rejectPendingPhoto(
+  memberId: string,
+  rejectedByUserId: string
+) {
+  const existing = await prisma.member.findUnique({ where: { id: memberId } });
+  if (!existing) throw new Error("Member not found");
+  if (!existing.pendingPhotoUrl) {
+    throw new Error("No pending photo retake for this member");
+  }
+
+  const pending = existing.pendingPhotoUrl;
+  const member = await prisma.member.update({
+    where: { id: memberId },
+    data: { pendingPhotoUrl: null },
+  });
+
+  await deleteMemberPhotoIfStored(pending);
+
+  await writeAuditLog({
+    actionType: AuditAction.MEMBER_PHOTO_REJECTED,
+    performedByUserId: rejectedByUserId,
+    memberId,
+    details: {
+      rejectedPhotoUrl: pending,
+      keptPhotoUrl: existing.photoUrl,
+    },
+  });
+
+  return withClientPhotoUrl(member);
 }
 
 type UpdateInput = z.infer<typeof updateMemberSchema>;

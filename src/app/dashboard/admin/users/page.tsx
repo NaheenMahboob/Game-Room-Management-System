@@ -89,7 +89,19 @@ export default function AdminUsersPage() {
       setTempCredCopied(true);
       toast.push("Copied — you can dismiss when ready");
     } catch {
-      toast.push("Could not copy — select and copy the password manually", "error");
+      // Clipboard may be blocked (non-HTTPS / permissions) — still allow dismiss.
+      const ok = window.confirm(
+        "Clipboard copy failed. Have you written down or selected the temporary password?\n\nOK = yes, enable Dismiss. Cancel = stay on this panel."
+      );
+      if (ok) {
+        setTempCredCopied(true);
+        toast.push("Dismiss enabled — password will not be shown again", "warn");
+      } else {
+        toast.push(
+          "Select the password text and copy it manually, then try Copy again",
+          "error"
+        );
+      }
     }
   }
 

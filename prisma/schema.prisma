@@ -80,6 +80,8 @@ model Member {
   emergencyContactName   String
   emergencyContactPhone  String
   photoUrl               String
+  // Self-service retake awaiting staff approval (current photoUrl stays until then).
+  pendingPhotoUrl        String?
   membershipStatus       MembershipStatus @default(ACTIVE)
   dateOfBirth            DateTime?
   waiverSigned           Boolean          @default(false)

@@ -15,7 +15,7 @@ const QUEUEABLE = new Set<string>([
   "/api/attendance/sign-out",
   "/api/loans",
   "/api/loans/return",
-  "/api/members",
+  // Desk registration is online-only (needs a real photo upload first).
 ]);
 
 function inferType(path: string, method: string): OfflineActionType | null {
@@ -23,7 +23,6 @@ function inferType(path: string, method: string): OfflineActionType | null {
   if (path.startsWith("/api/attendance/sign-out")) return "SIGN_OUT";
   if (path === "/api/loans" && method === "POST") return "BORROW";
   if (path.startsWith("/api/loans/return")) return "RETURN";
-  if (path === "/api/members" && method === "POST") return "REGISTER";
   return null;
 }
 

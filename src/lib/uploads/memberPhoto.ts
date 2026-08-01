@@ -42,22 +42,33 @@ export const MAX_MEMBER_PHOTO_BYTES = 2 * 1024 * 1024;
  * Builds the authenticated browser URL for a member's photo.
  *
  * @param memberId - Member cuid
+ * @param variant - `pending` streams the awaiting-approval retake when present
  * @returns API path that streams the private file when authorized
  */
-export function memberPhotoSrc(memberId: string): string {
+export function memberPhotoSrc(
+  memberId: string,
+  variant?: "pending"
+): string {
+  if (variant === "pending") {
+    return `/api/members/${memberId}/photo?variant=pending`;
+  }
   return `/api/members/${memberId}/photo`;
 }
 
 /**
  * Replaces stored filenames with client-facing API photo URLs.
- *
- * @param member - Object that includes `id` and `photoUrl`
- * @returns Same object with `photoUrl` set to {@link memberPhotoSrc}
+ * Maps `pendingPhotoUrl` (filename) to a pending API path when set.
  */
-export function withClientPhotoUrl<T extends { id: string; photoUrl: string }>(
-  member: T
-): T {
-  return { ...member, photoUrl: memberPhotoSrc(member.id) };
+export function withClientPhotoUrl<
+  T extends { id: string; photoUrl: string; pendingPhotoUrl?: string | null },
+>(member: T): T & { pendingPhotoUrl: string | null } {
+  return {
+    ...member,
+    photoUrl: memberPhotoSrc(member.id),
+    pendingPhotoUrl: member.pendingPhotoUrl
+      ? memberPhotoSrc(member.id, "pending")
+      : null,
+  };
 }
 
 /**

@@ -35,6 +35,7 @@ type MemberDetail = MemberHit & {
   waiverSigned: boolean;
   waiverVersion: number;
   parentalConsent: boolean;
+  pendingPhotoUrl?: string | null;
   attendances: { id: string; signInTime: string }[];
   loans: {
     id: string;
@@ -303,6 +304,16 @@ export function MembersClient() {
               <div>
                 <p className="font-semibold">{m.fullName}</p>
                 <p className="text-sm text-slate-400">{m.phone}</p>
+                {m.membershipStatus === "PENDING" ? (
+                  <p className="mt-1 text-xs font-semibold text-amber-400">
+                    Pending registration
+                  </p>
+                ) : null}
+                {m.membershipStatus === "INACTIVE" ? (
+                  <p className="mt-1 text-xs font-semibold text-red-400">
+                    Inactive
+                  </p>
+                ) : null}
               </div>
             </button>
           ))}
@@ -321,6 +332,33 @@ export function MembersClient() {
             />
             <div className="flex-1 space-y-2">
               <h2 className="text-3xl font-bold">{selected.fullName}</h2>
+              {selected.membershipStatus === "PENDING" ? (
+                <p className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
+                  Registration awaiting photo verification.{" "}
+                  <Link
+                    href="/dashboard/members/pending"
+                    className="font-semibold underline"
+                  >
+                    Open pending queue
+                  </Link>
+                </p>
+              ) : null}
+              {selected.membershipStatus === "INACTIVE" ? (
+                <p className="rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+                  Membership is inactive — sign-in is blocked.
+                </p>
+              ) : null}
+              {selected.pendingPhotoUrl ? (
+                <p className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
+                  Photo retake awaiting approval.{" "}
+                  <Link
+                    href="/dashboard/members/pending"
+                    className="font-semibold underline"
+                  >
+                    Review in pending queue
+                  </Link>
+                </p>
+              ) : null}
               <p className="text-slate-300">{selected.phone}</p>
               <p className="text-sm text-slate-400">
                 Emergency: {selected.emergencyContactName} ·{" "}
@@ -366,7 +404,7 @@ export function MembersClient() {
             </div>
           ) : null}
 
-          {!isInside ? (
+          {!isInside && selected.membershipStatus === "ACTIVE" ? (
             <label className="mt-5 flex min-h-12 items-start gap-3 rounded-xl border border-slate-600 bg-slate-950/60 p-3">
               <input
                 type="checkbox"
@@ -381,7 +419,7 @@ export function MembersClient() {
           ) : null}
 
           <div className="mt-5 flex flex-wrap gap-2">
-            {!isInside ? (
+            {!isInside && selected.membershipStatus === "ACTIVE" ? (
               <button
                 type="button"
                 onClick={signIn}
@@ -390,7 +428,16 @@ export function MembersClient() {
               >
                 Sign In
               </button>
-            ) : (
+            ) : null}
+            {selected.membershipStatus === "PENDING" ? (
+              <Link
+                href="/dashboard/members/pending"
+                className="inline-flex min-h-12 items-center rounded-xl bg-amber-500 px-5 font-semibold text-slate-950"
+              >
+                Go to pending queue
+              </Link>
+            ) : null}
+            {isInside ? (
               <button
                 type="button"
                 onClick={() => signOut(false)}
@@ -398,7 +445,7 @@ export function MembersClient() {
               >
                 Sign Out
               </button>
-            )}
+            ) : null}
             <button
               type="button"
               onClick={() =>

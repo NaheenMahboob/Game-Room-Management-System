@@ -5,8 +5,14 @@
 export const AuditAction = {
   MEMBER_REGISTERED: "MEMBER_REGISTERED",
   MEMBER_UPDATED: "MEMBER_UPDATED",
-  /** Staff or self replaced a member profile photo on disk. */
+  /** Staff or desk replaced the live profile photo immediately. */
   MEMBER_PHOTO_UPDATED: "MEMBER_PHOTO_UPDATED",
+  /** Member submitted a retake; awaiting staff approve/reject. */
+  MEMBER_PHOTO_PENDING: "MEMBER_PHOTO_PENDING",
+  /** Staff approved a pending photo retake (old file removed). */
+  MEMBER_PHOTO_APPROVED: "MEMBER_PHOTO_APPROVED",
+  /** Staff rejected a pending photo retake (pending file removed; live photo kept). */
+  MEMBER_PHOTO_REJECTED: "MEMBER_PHOTO_REJECTED",
   /** Staff approved a PENDING self-registration after photo review. */
   MEMBER_APPROVED: "MEMBER_APPROVED",
   /** Staff rejected a PENDING self-registration. */

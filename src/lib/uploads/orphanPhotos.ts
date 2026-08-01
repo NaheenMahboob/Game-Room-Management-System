@@ -45,13 +45,15 @@ export async function sweepOrphanRegistrationPhotos(
   if (candidates.length === 0) return 0;
 
   const members = await prisma.member.findMany({
-    select: { photoUrl: true },
+    select: { photoUrl: true, pendingPhotoUrl: true },
   });
-  const referenced = new Set(
-    members
-      .map((m) => storedPhotoFilename(m.photoUrl))
-      .filter((f): f is string => Boolean(f))
-  );
+  const referenced = new Set<string>();
+  for (const m of members) {
+    const live = storedPhotoFilename(m.photoUrl);
+    if (live) referenced.add(live);
+    const pending = storedPhotoFilename(m.pendingPhotoUrl);
+    if (pending) referenced.add(pending);
+  }
 
   const cutoff = Date.now() - maxAgeMs;
   let deleted = 0;

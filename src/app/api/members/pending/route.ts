@@ -1,22 +1,27 @@
 /**
- * Pending member registrations — staff photo verification queue.
- * GET lists PENDING members; PATCH approves or rejects.
+ * Pending queues for staff:
+ * - GET: self-registrations (`PENDING` status) + photo retakes awaiting review
+ * - PATCH: approve/reject a self-registration (reject deletes the account)
  */
 
 import { z } from "zod";
 import { withRole } from "@/lib/auth/api";
-import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
+import { jsonOk, handleRouteError } from "@/lib/api/http";
 import {
   approveMemberRegistration,
   listPendingMembers,
+  listPendingPhotoRetakes,
   rejectMemberRegistration,
 } from "@/lib/services/members";
 
-/** Lists members awaiting photo verification (`PENDING` status). */
+/** Lists registration + photo-retake queues. */
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async () => {
   try {
-    const members = await listPendingMembers();
-    return jsonOk({ members });
+    const [members, photoRetakes] = await Promise.all([
+      listPendingMembers(),
+      listPendingPhotoRetakes(),
+    ]);
+    return jsonOk({ members, photoRetakes });
   } catch (error) {
     return handleRouteError(error);
   }

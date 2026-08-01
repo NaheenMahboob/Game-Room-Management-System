@@ -20,6 +20,7 @@ type Member = {
   emergencyContactName: string;
   emergencyContactPhone: string;
   photoUrl: string;
+  pendingPhotoUrl?: string | null;
   qrPayload: string;
   membershipStatus: string;
 };
@@ -90,18 +91,23 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
   }
 
   /**
-   * Uploads the draft photo for this member (self-service).
+   * Submits a self-service retake — stays pending until staff approve/reject.
    */
   async function savePhoto() {
     if (!photoDraft) return;
     setSavingPhoto(true);
     try {
-      const photoUrl = await uploadMemberPhotoDataUrl(
+      await uploadMemberPhotoDataUrl(
         photoDraft,
         `/api/members/${memberId}/photo`
       );
-      setMember((m) => (m ? { ...m, photoUrl } : m));
-      toast.push("Photo updated");
+      const refreshed = await apiFetch<{ member: Member }>(
+        `/api/members/${memberId}`
+      );
+      setMember(refreshed.member);
+      toast.push(
+        "Photo submitted for staff approval. Your current photo stays until approved."
+      );
       setUpdatingPhoto(false);
       setPhotoDraft(null);
     } catch (err) {
@@ -140,6 +146,12 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
         <div>
           <h1 className="text-3xl font-semibold">{member.fullName}</h1>
           <p className="text-slate-400">{member.membershipStatus}</p>
+          {member.pendingPhotoUrl ? (
+            <p className="mt-2 rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
+              A new photo is awaiting volunteer approval. Your current photo is
+              still shown until then.
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -162,7 +174,7 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
             onClick={savePhoto}
             className="min-h-11 rounded-xl bg-emerald-600 px-5 font-semibold disabled:opacity-60"
           >
-            {savingPhoto ? "Uploading…" : "Save new photo"}
+            {savingPhoto ? "Uploading…" : "Submit for approval"}
           </button>
         </section>
       ) : null}
