@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
 import { writeAuditLog } from "@/lib/audit/log";
 import { generateTempPassword } from "@/lib/members/ids";
-import { clearRateLimit, loginEmailKey } from "@/lib/auth/rateLimit";
+import { clearLoginRateLimitsForEmail } from "@/lib/auth/rateLimit";
 
 const updateUserSchema = z.object({
   role: z.enum(["MEMBER", "VOLUNTEER", "ADMIN"]).optional(),
@@ -60,8 +60,8 @@ export const GET = withRole(["ADMIN"], async ({ request }) => {
 
 /**
  * Updates an existing user's role and/or resets their password.
- * Password reset also clears the email login rate-limit bucket so the user
- * can immediately try the new temporary credentials.
+ * Password reset also clears that account's email + linked device IP
+ * rate-limit buckets so they can retry from attempt 1 with the temp password.
  *
  * @returns Updated user and optional `temporaryPassword` when reset
  */
@@ -98,9 +98,9 @@ export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
       select: userSelect,
     });
 
-    // Let them log in again even if prior failed attempts locked the email key.
+    // Unlock email + any IPs that failed for this account (same phone/Wi‑Fi).
     if (body.resetPassword) {
-      clearRateLimit(loginEmailKey(user.email));
+      clearLoginRateLimitsForEmail(user.email);
     }
 
     await writeAuditLog({

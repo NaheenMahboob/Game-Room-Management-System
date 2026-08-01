@@ -17,7 +17,9 @@ import { signAccessToken, signRefreshToken } from "@/lib/auth/jwt";
 import { setAuthCookies } from "@/lib/auth/cookies";
 import {
   checkRateLimit,
+  clearLoginRateLimitsForEmail,
   clearRateLimit,
+  linkLoginAttempt,
   loginEmailKey,
   loginIpKey,
   recordRateLimitHit,
@@ -99,6 +101,7 @@ export async function POST(request: NextRequest) {
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     recordRateLimitHit(ipKey);
     recordRateLimitHit(emailKey);
+    linkLoginAttempt(emailKey, ipKey);
     return NextResponse.json(
       { error: "Invalid email or password" },
       { status: 401 }
@@ -108,6 +111,7 @@ export async function POST(request: NextRequest) {
   if (portal === "member" && user.role !== Role.MEMBER) {
     recordRateLimitHit(ipKey);
     recordRateLimitHit(emailKey);
+    linkLoginAttempt(emailKey, ipKey);
     return NextResponse.json(
       { error: "Use the volunteer/admin dashboard login for this account" },
       { status: 403 }
@@ -121,6 +125,7 @@ export async function POST(request: NextRequest) {
   ) {
     recordRateLimitHit(ipKey);
     recordRateLimitHit(emailKey);
+    linkLoginAttempt(emailKey, ipKey);
     return NextResponse.json(
       { error: "Use the member portal login for this account" },
       { status: 403 }
@@ -151,8 +156,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Successful login: wipe this IP + email buckets and forget IP↔email links.
   clearRateLimit(ipKey);
-  clearRateLimit(emailKey);
+  clearLoginRateLimitsForEmail(normalizedEmail);
 
   const sessionPayload = {
     sub: user.id,

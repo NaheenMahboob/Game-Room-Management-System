@@ -3,6 +3,10 @@
  *
  * Suitable for a single Node process. Multi-instance deploys would need a
  * shared store (Redis); for a mosque on-prem deploy this is enough.
+ *
+ * Login uses both an IP key and an email key. Failed attempts are linked so an
+ * admin password reset can clear the email bucket and any IPs that hit it,
+ * letting the member start again from attempt 1 on the same device.
  */
 
 type RateBucket = {
@@ -19,6 +23,12 @@ export const LOGIN_RATE_LIMIT_MAX = 5;
 export const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
 const buckets = new Map<string, RateBucket>();
+
+/**
+ * Email rate-limit key → IP keys that recorded failures for that email.
+ * Used so password reset can unlock the member's device IP as well.
+ */
+const emailLinkedIpKeys = new Map<string, Set<string>>();
 
 /**
  * Result of checking whether a key may proceed.
@@ -86,12 +96,47 @@ export function recordRateLimitHit(
 }
 
 /**
- * Clears the bucket for `key` (e.g. after a successful login or admin password reset).
+ * Remembers that a failed login for `emailKey` came from `ipKey`.
+ * Call alongside {@link recordRateLimitHit} on failed login attempts.
+ *
+ * @param emailKey - From {@link loginEmailKey}
+ * @param ipKey - From {@link loginIpKey}
+ */
+export function linkLoginAttempt(emailKey: string, ipKey: string): void {
+  let ips = emailLinkedIpKeys.get(emailKey);
+  if (!ips) {
+    ips = new Set();
+    emailLinkedIpKeys.set(emailKey, ips);
+  }
+  ips.add(ipKey);
+}
+
+/**
+ * Clears the bucket for `key` (e.g. after a successful login).
  *
  * @param key - Namespaced rate-limit key
  */
 export function clearRateLimit(key: string): void {
   buckets.delete(key);
+}
+
+/**
+ * Clears the email login bucket and any IP buckets linked to failed attempts
+ * for that email (admin password reset → member can retry from attempt 1).
+ *
+ * @param email - Account email (any casing)
+ */
+export function clearLoginRateLimitsForEmail(email: string): void {
+  const emailKey = loginEmailKey(email);
+  clearRateLimit(emailKey);
+
+  const ips = emailLinkedIpKeys.get(emailKey);
+  if (ips) {
+    for (const ipKey of Array.from(ips)) {
+      clearRateLimit(ipKey);
+    }
+    emailLinkedIpKeys.delete(emailKey);
+  }
 }
 
 /**
