@@ -1,0 +1,242 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MEMBER
+  VOLUNTEER
+  ADMIN
+}
+
+enum EquipmentType {
+  PS5_CONSOLE
+  PS5_CONTROLLER
+  SWITCH_CONSOLE
+  SWITCH_CONTROLLER
+  TABLE_TENNIS
+  FOOSBALL
+  POOL
+  AIR_HOCKEY
+}
+
+enum ConditionStatus {
+  GOOD
+  MINOR_ISSUE
+  OUT_OF_ORDER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TargetAudience {
+  GENERAL
+  MEMBERS
+  VOLUNTEERS
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(MEMBER)
+  createdAt    DateTime @default(now())
+
+  member              Member?
+  attendancesSignedIn Attendance[]      @relation("SignedInBy")
+  attendancesSignedOut Attendance[]     @relation("SignedOutBy")
+  loansBorrowed       Loan[]            @relation("BorrowedBy")
+  loansReturned       Loan[]            @relation("ReturnedBy")
+  auditLogs           AuditLog[]
+  announcements       Announcement[]
+  events              Event[]
+  waivers             Waiver[]
+  shifts              Shift[]
+  shiftChecklists     ShiftChecklist[]
+  membersRegistered   Member[]          @relation("RegisteredBy")
+}
+
+model Member {
+  id                     String           @id @default(cuid())
+  userId                 String           @unique
+  user                   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName               String
+  phone                  String           @unique
+  email                  String?
+  emergencyContactName   String
+  emergencyContactPhone  String
+  photoUrl               String
+  membershipStatus       MembershipStatus @default(ACTIVE)
+  dateOfBirth            DateTime?
+  waiverSigned           Boolean          @default(false)
+  waiverSignedAt         DateTime?
+  waiverVersion          Int              @default(0)
+  parentalConsent        Boolean          @default(false)
+  qrPayload              String           @unique
+  registeredByUserId     String
+  registeredBy           User             @relation("RegisteredBy", fields: [registeredByUserId], references: [id])
+  createdAt              DateTime         @default(now())
+
+  attendances Attendance[]
+  loans       Loan[]
+  queueEntries EquipmentQueue[]
+  guestPasses GuestPass[]
+  auditLogs   AuditLog[]
+}
+
+model Attendance {
+  id                String    @id @default(cuid())
+  memberId          String
+  member            Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  signInTime        DateTime  @default(now())
+  signOutTime       DateTime?
+  signedInByUserId  String
+  signedInBy        User      @relation("SignedInBy", fields: [signedInByUserId], references: [id])
+  signedOutByUserId String?
+  signedOutBy       User?     @relation("SignedOutBy", fields: [signedOutByUserId], references: [id])
+}
+
+model Equipment {
+  id              String          @id @default(cuid())
+  type            EquipmentType
+  label           String          @unique
+  conditionStatus ConditionStatus @default(GOOD)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+
+  loans        Loan[]
+  queueEntries EquipmentQueue[]
+  auditLogs    AuditLog[]
+}
+
+model Loan {
+  id               String    @id @default(cuid())
+  memberId         String
+  member           Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  equipmentId      String
+  equipment        Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  borrowedAt       DateTime  @default(now())
+  returnedAt       DateTime?
+  borrowedByUserId String
+  borrowedBy       User      @relation("BorrowedBy", fields: [borrowedByUserId], references: [id])
+  returnedByUserId String?
+  returnedBy       User?     @relation("ReturnedBy", fields: [returnedByUserId], references: [id])
+  conditionNotes   String?
+
+  @@index([equipmentId, returnedAt])
+  @@index([memberId, returnedAt])
+}
+
+model EquipmentQueue {
+  id          String    @id @default(cuid())
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  requestedAt DateTime  @default(now())
+  position    Int
+  fulfilled   Boolean   @default(false)
+
+  @@index([equipmentId, fulfilled, position])
+}
+
+model AuditLog {
+  id                String   @id @default(cuid())
+  actionType        String
+  timestamp         DateTime @default(now())
+  performedByUserId String
+  performedBy       User     @relation(fields: [performedByUserId], references: [id])
+  memberId          String?
+  member            Member?  @relation(fields: [memberId], references: [id])
+  equipmentId       String?
+  equipment         Equipment? @relation(fields: [equipmentId], references: [id])
+  details           Json?
+
+  @@index([timestamp])
+  @@index([actionType])
+  @@index([performedByUserId])
+}
+
+model Announcement {
+  id              String         @id @default(cuid())
+  title           String
+  content         String
+  targetAudience  TargetAudience @default(GENERAL)
+  scheduledStart  DateTime?
+  scheduledEnd    DateTime?
+  createdByUserId String
+  createdBy       User           @relation(fields: [createdByUserId], references: [id])
+  createdAt       DateTime       @default(now())
+}
+
+model Event {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  eventDate       DateTime
+  createdByUserId String
+  createdBy       User     @relation(fields: [createdByUserId], references: [id])
+  createdAt       DateTime @default(now())
+}
+
+model Waiver {
+  id              String   @id @default(cuid())
+  version         Int      @unique
+  text            String
+  createdByUserId String
+  createdBy       User     @relation(fields: [createdByUserId], references: [id])
+  createdAt       DateTime @default(now())
+}
+
+model Shift {
+  id              String   @id @default(cuid())
+  volunteerUserId String
+  volunteer       User     @relation(fields: [volunteerUserId], references: [id], onDelete: Cascade)
+  dayOfWeek       Int
+  startTime       String
+  endTime         String
+  recurring       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  checklists ShiftChecklist[]
+}
+
+model ShiftChecklist {
+  id                      String   @id @default(cuid())
+  shiftId                 String
+  shift                   Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  volunteerUserId         String
+  volunteer               User     @relation(fields: [volunteerUserId], references: [id])
+  completedAt             DateTime @default(now())
+  equipmentCountVerified  Boolean  @default(false)
+  damageChecked           Boolean  @default(false)
+  previousNotesReviewed   Boolean  @default(false)
+  occupancyConfirmed      Boolean  @default(false)
+  announcementsReviewed   Boolean  @default(false)
+  notes                   String?
+}
+
+model GuestPass {
+  id           String    @id @default(cuid())
+  hostMemberId String
+  hostMember   Member    @relation(fields: [hostMemberId], references: [id], onDelete: Cascade)
+  guestName    String
+  guestPhone   String
+  signedInAt   DateTime?
+  signedOutAt  DateTime?
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
