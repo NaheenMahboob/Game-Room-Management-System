@@ -72,6 +72,39 @@ Open [http://localhost:3000](http://localhost:3000) — the home page shows DB c
 | `npm run db:studio` | Open Prisma Studio |
 | `npm run dev` | Start Next.js dev server |
 
+## Auth (Module 2)
+
+| Portal | URL | Test account |
+|--------|-----|--------------|
+| Member | `/portal/login` | `member@mosque.local` / `ChangeMeMember123!` |
+| Dashboard | `/dashboard/login` | `volunteer@mosque.local` / `ChangeMeVolunteer123!` |
+| Admin | `/dashboard/login` then `/dashboard/admin` | `admin@mosque.local` / `ChangeMeAdmin123!` |
+
+JWT session cookies: `grms_access` (1h), `grms_refresh` (7d). Middleware guards `/portal/*`, `/dashboard/*`, and `/dashboard/admin/*`.
+
+## Core APIs (Module 3)
+
+Staff-only (VOLUNTEER/ADMIN) unless noted:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET/POST | `/api/members` | Search / register |
+| GET/PATCH | `/api/members/[id]` | Profile (members: self only) |
+| GET | `/api/members/by-qr/[payload]` | QR lookup |
+| POST | `/api/attendance/sign-in` | Room sign-in |
+| POST | `/api/attendance/sign-out` | Sign-out (+ force return loans) |
+| GET | `/api/attendance` | History / `?active=true` |
+| GET | `/api/equipment` | Inventory + loan/queue state |
+| PATCH | `/api/equipment/[id]/condition` | Condition update |
+| GET/POST | `/api/loans` | Active loans / borrow |
+| POST | `/api/loans/return` | Return one/all |
+| GET/POST/DELETE | `/api/queue` | Waiting queue |
+| POST | `/api/guests` | Issue guest pass |
+| POST/DELETE | `/api/guests/[id]` | Guest sign-in / sign-out |
+| GET | `/api/admin/audit` | Audit log (ADMIN) |
+| GET | `/api/public/occupancy` | Public occupancy |
+| GET | `/api/public/availability` | Public equipment counts |
+
 ## Project status
 
-Module 1 (schema, database, seeding) is complete. Auth, APIs, and UI modules follow next.
+Modules 1–3 complete. Next: volunteer tablet UI (Module 4).

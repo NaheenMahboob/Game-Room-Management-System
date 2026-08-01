@@ -1,0 +1,35 @@
+import { withRole } from "@/lib/auth/api";
+import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
+import {
+  memberSearchSchema,
+  registerMemberSchema,
+} from "@/lib/validation/schemas";
+import { registerMember, searchMembers } from "@/lib/services/members";
+
+export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
+  try {
+    const { searchParams } = new URL(request.url);
+    const parsed = memberSearchSchema.parse({
+      q: searchParams.get("q") ?? undefined,
+      limit: searchParams.get("limit") ?? undefined,
+    });
+    if (!parsed.q) {
+      return jsonError("Query parameter q is required", 400);
+    }
+    const members = await searchMembers(parsed.q, parsed.limit ?? 20);
+    return jsonOk({ members });
+  } catch (error) {
+    return handleRouteError(error);
+  }
+});
+
+export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
+  try {
+    const body = await request.json();
+    const input = registerMemberSchema.parse(body);
+    const result = await registerMember(input, session.sub);
+    return jsonOk(result, 201);
+  } catch (error) {
+    return handleRouteError(error);
+  }
+});

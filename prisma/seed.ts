@@ -1,29 +1,39 @@
-import { PrismaClient, EquipmentType, Role } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-const EQUIPMENT_SEED: { type: EquipmentType; label: string }[] = [
+type EquipmentSeedType =
+  | "PS5_CONSOLE"
+  | "PS5_CONTROLLER"
+  | "SWITCH_CONSOLE"
+  | "SWITCH_CONTROLLER"
+  | "TABLE_TENNIS"
+  | "FOOSBALL"
+  | "POOL"
+  | "AIR_HOCKEY";
+
+const EQUIPMENT_SEED: { type: EquipmentSeedType; label: string }[] = [
   ...Array.from({ length: 6 }, (_, i) => ({
-    type: EquipmentType.PS5_CONSOLE,
+    type: "PS5_CONSOLE" as const,
     label: `PS5 Console #${i + 1}`,
   })),
   ...Array.from({ length: 24 }, (_, i) => ({
-    type: EquipmentType.PS5_CONTROLLER,
+    type: "PS5_CONTROLLER" as const,
     label: `PS5 Controller #${i + 1}`,
   })),
   ...Array.from({ length: 4 }, (_, i) => ({
-    type: EquipmentType.SWITCH_CONSOLE,
+    type: "SWITCH_CONSOLE" as const,
     label: `Switch Console #${i + 1}`,
   })),
   ...Array.from({ length: 8 }, (_, i) => ({
-    type: EquipmentType.SWITCH_CONTROLLER,
+    type: "SWITCH_CONTROLLER" as const,
     label: `Switch Controller #${i + 1}`,
   })),
-  { type: EquipmentType.TABLE_TENNIS, label: "Table Tennis" },
-  { type: EquipmentType.FOOSBALL, label: "Foosball" },
-  { type: EquipmentType.POOL, label: "Pool Table" },
-  { type: EquipmentType.AIR_HOCKEY, label: "Air Hockey" },
+  { type: "TABLE_TENNIS", label: "Table Tennis" },
+  { type: "FOOSBALL", label: "Foosball" },
+  { type: "POOL", label: "Pool Table" },
+  { type: "AIR_HOCKEY", label: "Air Hockey" },
 ];
 
 const DEFAULT_WAIVER_TEXT = `
@@ -64,16 +74,90 @@ async function main() {
     where: { email: adminEmail },
     update: {
       passwordHash,
-      role: Role.ADMIN,
+      role: "ADMIN",
     },
     create: {
       email: adminEmail,
       passwordHash,
-      role: Role.ADMIN,
+      role: "ADMIN",
     },
   });
 
   console.log(`Admin user ready: ${admin.email} (${admin.id})`);
+
+  const volunteerEmail =
+    process.env.VOLUNTEER_EMAIL ?? "volunteer@mosque.local";
+  const volunteerPassword =
+    process.env.VOLUNTEER_PASSWORD ?? "ChangeMeVolunteer123!";
+  const volunteerHash = await bcrypt.hash(volunteerPassword, 12);
+
+  const volunteer = await prisma.user.upsert({
+    where: { email: volunteerEmail },
+    update: {
+      passwordHash: volunteerHash,
+      role: "VOLUNTEER",
+    },
+    create: {
+      email: volunteerEmail,
+      passwordHash: volunteerHash,
+      role: "VOLUNTEER",
+    },
+  });
+
+  console.log(`Volunteer user ready: ${volunteer.email} (${volunteer.id})`);
+
+  const memberEmail = process.env.MEMBER_EMAIL ?? "member@mosque.local";
+  const memberPassword = process.env.MEMBER_PASSWORD ?? "ChangeMeMember123!";
+  const memberHash = await bcrypt.hash(memberPassword, 12);
+
+  const memberUser = await prisma.user.upsert({
+    where: { email: memberEmail },
+    update: {
+      passwordHash: memberHash,
+      role: "MEMBER",
+    },
+    create: {
+      email: memberEmail,
+      passwordHash: memberHash,
+      role: "MEMBER",
+    },
+  });
+
+  await prisma.member.upsert({
+    where: { userId: memberUser.id },
+    update: {
+      fullName: "Demo Member",
+      phone: "555-0100",
+      email: memberEmail,
+      emergencyContactName: "Demo Parent",
+      emergencyContactPhone: "555-0101",
+      photoUrl: "/placeholder-member.jpg",
+      membershipStatus: "ACTIVE",
+      waiverSigned: true,
+      waiverSignedAt: new Date(),
+      waiverVersion: 1,
+      parentalConsent: true,
+      registeredByUserId: admin.id,
+    },
+    create: {
+      userId: memberUser.id,
+      fullName: "Demo Member",
+      phone: "555-0100",
+      email: memberEmail,
+      emergencyContactName: "Demo Parent",
+      emergencyContactPhone: "555-0101",
+      photoUrl: "/placeholder-member.jpg",
+      membershipStatus: "ACTIVE",
+      waiverSigned: true,
+      waiverSignedAt: new Date(),
+      waiverVersion: 1,
+      parentalConsent: true,
+      qrPayload: `m_demo_member`,
+      registeredByUserId: admin.id,
+    },
+  });
+
+  console.log(`Member user ready: ${memberUser.email} (${memberUser.id})`);
 
   for (const item of EQUIPMENT_SEED) {
     await prisma.equipment.upsert({

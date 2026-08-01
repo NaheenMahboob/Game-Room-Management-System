@@ -1,0 +1,62 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import {
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} from "@/lib/auth/jwt";
+import {
+  REFRESH_COOKIE,
+  setAuthCookies,
+  clearAuthCookies,
+} from "@/lib/auth/cookies";
+
+export async function POST(request: NextRequest) {
+  const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
+  if (!refreshToken) {
+    const response = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    clearAuthCookies(response);
+    return response;
+  }
+
+  const claims = await verifyRefreshToken(refreshToken);
+  if (!claims?.sub) {
+    const response = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    clearAuthCookies(response);
+    return response;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: claims.sub },
+    include: { member: { select: { id: true } } },
+  });
+
+  if (!user) {
+    const response = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    clearAuthCookies(response);
+    return response;
+  }
+
+  const sessionPayload = {
+    sub: user.id,
+    role: user.role,
+    memberId: user.member?.id,
+  };
+
+  const [accessToken, newRefreshToken] = await Promise.all([
+    signAccessToken(sessionPayload),
+    signRefreshToken(sessionPayload),
+  ]);
+
+  const response = NextResponse.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      memberId: user.member?.id ?? null,
+    },
+  });
+
+  setAuthCookies(response, accessToken, newRefreshToken);
+  return response;
+}
