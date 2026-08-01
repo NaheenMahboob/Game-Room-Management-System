@@ -3,9 +3,9 @@
 /**
  * Volunteer desk member identify panel.
  *
- * Only shows members who requested check-in (“I’m here” in the portal, or
- * desk registration). Staff verify the photo, then sign them into the room.
- * Already-inside members can still be opened via deep link / QR for sign-out.
+ * Roster shows members waiting to enter (portal “I’m here” / desk register)
+ * and members already inside (borrow, return, sign-out). Sign-in still
+ * requires an open check-in request.
  */
 
 import Link from "next/link";
@@ -19,7 +19,7 @@ import { QrScannerModal } from "@/components/dashboard/QrScannerModal";
 import { GuestPassForm } from "@/components/dashboard/GuestPassForm";
 import { PhotoCapture } from "@/components/dashboard/PhotoCapture";
 
-/** Compact row on the waiting / search list. */
+/** Compact row on the desk roster (waiting + inside). */
 type MemberHit = {
   id: string;
   fullName: string;
@@ -28,6 +28,8 @@ type MemberHit = {
   membershipStatus: string;
   qrPayload: string;
   checkInRequestedAt?: string | null;
+  /** Open attendance rows when the member is currently inside. */
+  attendances?: { id: string; signInTime: string }[];
 };
 
 /** Full profile used for desk actions (sign-in, loans, guest pass). */
@@ -47,7 +49,7 @@ type MemberDetail = MemberHit & {
 };
 
 /**
- * Main volunteer desk client: waiting list + gated sign-in.
+ * Main volunteer desk client: waiting + inside roster with gated sign-in.
  */
 export function MembersClient() {
   const toast = useToast();
@@ -55,7 +57,7 @@ export function MembersClient() {
   const searchParams = useSearchParams();
 
   const [q, setQ] = useState("");
-  /** Members waiting to be let in (filtered search or full waiting list). */
+  /** Desk roster: waiting to enter and/or currently inside. */
   const [hits, setHits] = useState<MemberHit[]>([]);
   const [selected, setSelected] = useState<MemberDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -97,11 +99,11 @@ export function MembersClient() {
   );
 
   /**
-   * Refreshes the waiting list (optionally filtered by name/phone).
+   * Refreshes the desk roster (optionally filtered by name/phone).
    *
-   * @param query - Optional search string; empty = full waiting list
+   * @param query - Optional search string; empty = full waiting + inside list
    */
-  const refreshWaiting = useCallback(
+  const refreshRoster = useCallback(
     async (query = "") => {
       setLoading(true);
       try {
@@ -112,7 +114,7 @@ export function MembersClient() {
         setHits(data.members);
       } catch (err) {
         toast.push(
-          err instanceof Error ? err.message : "Could not load waiting list",
+          err instanceof Error ? err.message : "Could not load member roster",
           "error"
         );
       } finally {
@@ -131,17 +133,16 @@ export function MembersClient() {
   }, [searchParams, loadMember]);
 
   useEffect(() => {
-    // Default view: only people who asked to be let in.
-    refreshWaiting("").catch(() => undefined);
+    // Default view: waiting to enter + currently inside.
+    refreshRoster("").catch(() => undefined);
     const id = window.setInterval(() => {
-      // Poll the full waiting list; search filter is applied on demand.
-      refreshWaiting("").catch(() => undefined);
+      refreshRoster("").catch(() => undefined);
     }, 10000);
     return () => window.clearInterval(id);
-  }, [refreshWaiting]);
+  }, [refreshRoster]);
 
   /**
-   * Filters the waiting list by name/phone; auto-selects a single hit.
+   * Filters the desk roster by name/phone; auto-selects a single hit.
    */
   async function search() {
     setLoading(true);
@@ -154,7 +155,7 @@ export function MembersClient() {
       if (data.members.length === 1) {
         await loadMember(data.members[0]!.id);
       } else if (data.members.length === 0) {
-        toast.push("No waiting members match that search", "warn");
+        toast.push("No waiting or inside members match that search", "warn");
       }
     } catch (err) {
       toast.push(err instanceof Error ? err.message : "Search failed", "error");
@@ -183,7 +184,7 @@ export function MembersClient() {
       setPhotoDraft(null);
       setSelected(data.member);
       toast.push(`Found ${data.member.fullName}`);
-      await refreshWaiting(q);
+      await refreshRoster(q);
     } catch (err) {
       toast.push(err instanceof Error ? err.message : "QR lookup failed", "error");
     }
@@ -213,7 +214,7 @@ export function MembersClient() {
       );
       if (!result.queued) {
         await loadMember(selected.id);
-        await refreshWaiting(q);
+        await refreshRoster(q);
       }
     } catch (err) {
       toast.push(err instanceof Error ? err.message : "Sign-in failed", "error");
@@ -252,7 +253,7 @@ export function MembersClient() {
       } else {
         toast.push("Signed out");
         await loadMember(selected.id);
-        await refreshWaiting(q);
+        await refreshRoster(q);
       }
     } catch (err) {
       toast.push(err instanceof Error ? err.message : "Sign-out failed", "error");
@@ -293,10 +294,10 @@ export function MembersClient() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Waiting to enter</h1>
+          <h1 className="text-2xl font-semibold">Members desk</h1>
           <p className="text-sm text-slate-400">
-            Only members who tapped “I’m here” in the portal (or were just
-            registered at the desk) appear here.
+            Waiting to enter (portal “I’m here”) and members already inside for
+            borrow, return, and sign-out. Sign-in still needs a check-in request.
           </p>
         </div>
         <Link
@@ -318,7 +319,7 @@ export function MembersClient() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && search()}
-          placeholder="Filter waiting list by name or phone"
+          placeholder="Filter roster by name or phone"
           className="min-h-12 min-w-[240px] flex-1 rounded-xl border border-slate-600 bg-slate-900 px-4"
         />
         <button
@@ -331,7 +332,7 @@ export function MembersClient() {
         </button>
         <button
           type="button"
-          onClick={() => refreshWaiting(q)}
+          onClick={() => refreshRoster(q)}
           disabled={loading}
           className="min-h-12 rounded-xl bg-slate-700 px-5 font-semibold"
         >
@@ -364,8 +365,12 @@ export function MembersClient() {
               <div>
                 <p className="font-semibold">{m.fullName}</p>
                 <p className="text-sm text-slate-400">{m.phone}</p>
-                {m.checkInRequestedAt ? (
+                {(m.attendances?.length ?? 0) > 0 ? (
                   <p className="mt-1 text-xs font-semibold text-emerald-400">
+                    Inside
+                  </p>
+                ) : m.checkInRequestedAt ? (
+                  <p className="mt-1 text-xs font-semibold text-amber-300">
                     Waiting since{" "}
                     {new Date(m.checkInRequestedAt).toLocaleTimeString()}
                   </p>
@@ -378,7 +383,7 @@ export function MembersClient() {
         <p className="rounded-2xl border border-dashed border-slate-700 px-4 py-8 text-center text-slate-400">
           {loading
             ? "Loading…"
-            : "Nobody is waiting to be let in. Members tap “I’m here” in the portal first."}
+            : "No one waiting or inside right now. Members tap “I’m here” in the portal to appear for sign-in."}
         </p>
       )}
 

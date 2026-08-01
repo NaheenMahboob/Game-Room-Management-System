@@ -1,6 +1,6 @@
 /**
  * Member search and desk registration for staff.
- * GET lists/searches the check-in waiting list only (people who requested entry).
+ * GET lists/searches the desk roster: waiting to enter + currently inside.
  * POST registers a member at the volunteer desk (auto-adds to waiting list).
  */
 
@@ -11,15 +11,12 @@ import {
   registerMemberSchema,
 } from "@/lib/validation/schemas";
 import { registerMember } from "@/lib/services/members";
-import {
-  listWaitingForCheckIn,
-  searchWaitingForCheckIn,
-} from "@/lib/services/checkIn";
+import { listDeskRoster, searchDeskRoster } from "@/lib/services/checkIn";
 import { deleteOrphanRegistrationPhoto } from "@/lib/uploads/memberPhoto";
 
 /**
- * Desk identify: without `q`, returns everyone waiting to be let in;
- * with `q`, searches only within that waiting list.
+ * Desk identify: without `q`, returns waiting + inside members;
+ * with `q`, searches within that roster.
  */
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   try {
@@ -29,8 +26,8 @@ export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
       limit: searchParams.get("limit") ?? undefined,
     });
     const members = parsed.q
-      ? await searchWaitingForCheckIn(parsed.q, parsed.limit ?? 20)
-      : await listWaitingForCheckIn();
+      ? await searchDeskRoster(parsed.q, parsed.limit ?? 20)
+      : await listDeskRoster();
     return jsonOk({ members });
   } catch (error) {
     return handleRouteError(error);

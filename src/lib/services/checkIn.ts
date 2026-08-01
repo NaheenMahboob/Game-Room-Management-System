@@ -2,14 +2,113 @@
  * Member-initiated check-in requests (“I’m here”) for desk room sign-in.
  *
  * Members must request entry from the portal before staff can sign them into
- * the room. Desk registration auto-creates a request so walk-ups still appear
- * on the volunteer waiting list.
+ * the room. Desk registration auto-creates a request so walk-ups still appear.
+ * The desk Members roster shows people waiting to enter and people already
+ * inside (for borrow / return / sign-out). Sign-in itself still requires a
+ * check-in request.
  */
 
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";
 import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
+
+/** Shared select for desk roster rows (waiting + inside). */
+const deskMemberSelect = {
+  id: true,
+  fullName: true,
+  phone: true,
+  photoUrl: true,
+  pendingPhotoUrl: true,
+  membershipStatus: true,
+  qrPayload: true,
+  checkInRequestedAt: true,
+  userId: true,
+  attendances: {
+    where: { signOutTime: null },
+    take: 1,
+    orderBy: { signInTime: "desc" as const },
+    select: { id: true, signInTime: true },
+  },
+} as const;
+
+/** Prisma filter: waiting to enter, or currently inside the room. */
+const deskRosterPresence = {
+  OR: [
+    {
+      checkInRequestedAt: { not: null },
+      attendances: { none: { signOutTime: null } },
+    },
+    { attendances: { some: { signOutTime: null } } },
+  ],
+} as const;
+
+/**
+ * Sorts desk roster: waiting (oldest first), then inside (A–Z).
+ *
+ * @param members - Raw Prisma rows with open `attendances`
+ */
+function sortDeskRoster<
+  T extends {
+    fullName: string;
+    checkInRequestedAt: Date | null;
+    attendances: unknown[];
+  },
+>(members: T[]): T[] {
+  return [...members].sort((a, b) => {
+    const aInside = a.attendances.length > 0;
+    const bInside = b.attendances.length > 0;
+    if (aInside !== bInside) return aInside ? 1 : -1;
+    if (!aInside && !bInside) {
+      const aAt = a.checkInRequestedAt?.getTime() ?? 0;
+      const bAt = b.checkInRequestedAt?.getTime() ?? 0;
+      return aAt - bAt;
+    }
+    return a.fullName.localeCompare(b.fullName);
+  });
+}
+
+/**
+ * ACTIVE members on the desk roster: waiting to enter, or already inside.
+ *
+ * @returns Roster with client photo URLs
+ */
+export async function listDeskRoster() {
+  const members = await prisma.member.findMany({
+    where: {
+      membershipStatus: "ACTIVE",
+      ...deskRosterPresence,
+    },
+    select: deskMemberSelect,
+  });
+  return sortDeskRoster(members).map(withClientPhotoUrl);
+}
+
+/**
+ * Searches the desk roster (waiting + currently inside) by name or phone.
+ *
+ * @param q - Name or phone fragment
+ * @param limit - Max rows
+ */
+export async function searchDeskRoster(q: string, limit = 20) {
+  const members = await prisma.member.findMany({
+    where: {
+      membershipStatus: "ACTIVE",
+      AND: [
+        deskRosterPresence,
+        {
+          OR: [
+            { fullName: { contains: q, mode: "insensitive" } },
+            { phone: { contains: q } },
+          ],
+        },
+      ],
+    },
+    take: limit,
+    select: deskMemberSelect,
+  });
+  return sortDeskRoster(members).map(withClientPhotoUrl);
+}
 
 /**
  * Lists ACTIVE members waiting for staff room sign-in (not already inside).
@@ -21,55 +120,10 @@ export async function listWaitingForCheckIn() {
     where: {
       membershipStatus: "ACTIVE",
       checkInRequestedAt: { not: null },
-      // Exclude anyone who already has an open attendance session.
       attendances: { none: { signOutTime: null } },
     },
     orderBy: { checkInRequestedAt: "asc" },
-    select: {
-      id: true,
-      fullName: true,
-      phone: true,
-      photoUrl: true,
-      pendingPhotoUrl: true,
-      membershipStatus: true,
-      qrPayload: true,
-      checkInRequestedAt: true,
-      userId: true,
-    },
-  });
-  return members.map(withClientPhotoUrl);
-}
-
-/**
- * Searches only among members currently waiting for desk sign-in.
- *
- * @param q - Name or phone fragment
- * @param limit - Max rows
- */
-export async function searchWaitingForCheckIn(q: string, limit = 20) {
-  const members = await prisma.member.findMany({
-    where: {
-      membershipStatus: "ACTIVE",
-      checkInRequestedAt: { not: null },
-      attendances: { none: { signOutTime: null } },
-      OR: [
-        { fullName: { contains: q, mode: "insensitive" } },
-        { phone: { contains: q } },
-      ],
-    },
-    take: limit,
-    orderBy: { checkInRequestedAt: "asc" },
-    select: {
-      id: true,
-      fullName: true,
-      phone: true,
-      photoUrl: true,
-      pendingPhotoUrl: true,
-      membershipStatus: true,
-      qrPayload: true,
-      checkInRequestedAt: true,
-      userId: true,
-    },
+    select: deskMemberSelect,
   });
   return members.map(withClientPhotoUrl);
 }

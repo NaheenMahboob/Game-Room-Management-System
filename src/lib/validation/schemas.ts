@@ -54,7 +54,7 @@ export const changePasswordSchema = z.object({
   newPassword: z.string().min(8).max(128),
 });
 
-/** Query params for desk member search (waiting list only). */
+/** Query params for desk member search (waiting + currently inside). */
 export const memberSearchSchema = z.object({
   q: z.string().trim().min(1).max(100).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
