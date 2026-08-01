@@ -1,0 +1,59 @@
+{
+  "app": {
+    "title": "Game Room Management System",
+    "subtitle": "Community game room for the mosque",
+    "publicBoard": "Public status board",
+    "memberPortal": "Member portal",
+    "dashboard": "Volunteer / Admin dashboard",
+    "dbConnected": "DB connected",
+    "language": "Language"
+  },
+  "nav": {
+    "home": "Home",
+    "members": "Members",
+    "borrow": "Borrow",
+    "return": "Return",
+    "inside": "Inside",
+    "admin": "Admin",
+    "profile": "Profile",
+    "history": "History",
+    "announcements": "Announcements",
+    "statusBoard": "Status board",
+    "signOut": "Sign out"
+  },
+  "board": {
+    "brand": "Community Game Room",
+    "mosque": "Mosque Community",
+    "inside": "people currently inside",
+    "available": "Available",
+    "inUse": "In use",
+    "out": "Out of order",
+    "minor": "Minor issue",
+    "hours": "Opening hours",
+    "announcements": "Announcements",
+    "events": "Upcoming events",
+    "rules": "Community rules",
+    "join": "How to join",
+    "updated": "Updated",
+    "memberLogin": "Member login",
+    "noAnnouncements": "No announcements right now."
+  },
+  "auth": {
+    "memberTitle": "Member portal",
+    "memberSubtitle": "Sign in with your member email and password.",
+    "dashboardTitle": "Volunteer / Admin dashboard",
+    "dashboardSubtitle": "Sign in to manage attendance, equipment, and the game room.",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…"
+  },
+  "offline": {
+    "online": "Online",
+    "offline": "Offline",
+    "syncing": "Syncing…",
+    "queued": "{count} action(s) queued",
+    "synced": "Offline actions synced",
+    "conflict": "Sync conflict — resolve manually"
+  }
+}

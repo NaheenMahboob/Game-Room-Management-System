@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 type Portal = "member" | "dashboard";
 
@@ -19,6 +20,7 @@ export function LoginForm({
   redirectTo,
 }: LoginFormProps) {
   const router = useRouter();
+  const t = useTranslations("auth");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +61,7 @@ export function LoginForm({
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-slate-300">Email</span>
+          <span className="text-sm font-medium text-slate-300">{t("email")}</span>
           <input
             type="email"
             autoComplete="username"
@@ -71,7 +73,9 @@ export function LoginForm({
         </label>
 
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-slate-300">Password</span>
+          <span className="text-sm font-medium text-slate-300">
+            {t("password")}
+          </span>
           <input
             type="password"
             autoComplete="current-password"
@@ -93,7 +97,7 @@ export function LoginForm({
           disabled={loading}
           className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? t("signingIn") : t("signIn")}
         </button>
       </form>
     </div>

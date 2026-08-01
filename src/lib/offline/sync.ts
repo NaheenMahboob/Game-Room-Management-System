@@ -1,0 +1,97 @@
+"use client";
+
+import { apiFetch } from "@/lib/api/client";
+import {
+  enqueueOfflineAction,
+  getOfflineQueue,
+  removeOfflineAction,
+  type OfflineAction,
+  type OfflineActionType,
+} from "@/lib/offline/queue";
+
+const QUEUEABLE = new Set<string>([
+  "/api/attendance/sign-in",
+  "/api/attendance/sign-out",
+  "/api/loans",
+  "/api/loans/return",
+  "/api/members",
+]);
+
+function inferType(path: string, method: string): OfflineActionType | null {
+  if (path.startsWith("/api/attendance/sign-in")) return "SIGN_IN";
+  if (path.startsWith("/api/attendance/sign-out")) return "SIGN_OUT";
+  if (path === "/api/loans" && method === "POST") return "BORROW";
+  if (path.startsWith("/api/loans/return")) return "RETURN";
+  if (path === "/api/members" && method === "POST") return "REGISTER";
+  return null;
+}
+
+export async function dashboardFetch<T>(
+  path: string,
+  options?: RequestInit & { allowStatuses?: number[]; queueWhenOffline?: boolean }
+): Promise<T> {
+  const method = (options?.method ?? "GET").toUpperCase();
+  const queueWhenOffline = options?.queueWhenOffline !== false;
+  const canQueue =
+    queueWhenOffline &&
+    typeof navigator !== "undefined" &&
+    !navigator.onLine &&
+    QUEUEABLE.has(path.split("?")[0]!) &&
+    ["POST", "PATCH", "DELETE"].includes(method);
+
+  if (canQueue) {
+    const type = inferType(path, method);
+    if (type) {
+      let body: unknown;
+      if (typeof options?.body === "string") {
+        try {
+          body = JSON.parse(options.body);
+        } catch {
+          body = options.body;
+        }
+      }
+      await enqueueOfflineAction({
+        type,
+        path,
+        method: method as "POST" | "PATCH" | "DELETE",
+        body,
+      });
+      return {
+        queued: true,
+        message: "Saved offline — will sync when connection returns",
+      } as T;
+    }
+  }
+
+  return apiFetch<T>(path, options);
+}
+
+export type SyncResult = {
+  id: string;
+  ok: boolean;
+  conflict?: boolean;
+  error?: string;
+  data?: unknown;
+};
+
+export async function syncOfflineQueue(): Promise<{
+  results: SyncResult[];
+  remaining: OfflineAction[];
+}> {
+  const queue = await getOfflineQueue();
+  if (queue.length === 0) return { results: [], remaining: [] };
+
+  const response = await apiFetch<{ results: SyncResult[] }>("/api/sync", {
+    method: "POST",
+    body: JSON.stringify({ actions: queue }),
+  });
+
+  for (const result of response.results) {
+    if (result.ok) {
+      await removeOfflineAction(result.id);
+    }
+  }
+
+  const remaining = await getOfflineQueue();
+  return { results: response.results, remaining };
+}

@@ -38,7 +38,8 @@ export const PATCH = withAuth(async ({ request, session }, rawParams) => {
     const input = updateMemberSchema.parse(body);
 
     if (isSelf) {
-      const { membershipStatus: _, ...selfSafe } = input;
+      const selfSafe = { ...input };
+      delete selfSafe.membershipStatus;
       const updated = await updateMember(
         params.id,
         selfSafe,

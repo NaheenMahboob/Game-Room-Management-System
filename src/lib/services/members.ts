@@ -169,7 +169,8 @@ export async function updateMember(
   asAdmin: boolean
 ) {
   if (!asAdmin) {
-    const { membershipStatus: _ignored, ...rest } = input;
+    const rest = { ...input };
+    delete rest.membershipStatus;
     input = rest;
   }
 

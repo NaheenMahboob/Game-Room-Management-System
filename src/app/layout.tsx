@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { I18nProvider } from "@/components/i18n/I18nProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -17,6 +18,16 @@ export const metadata: Metadata = {
   title: "Game Room Management System",
   description:
     "Community game room management for member registration, attendance, and equipment tracking.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Game Room",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f766e",
 };
 
 export default function RootLayout({
@@ -29,7 +40,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );

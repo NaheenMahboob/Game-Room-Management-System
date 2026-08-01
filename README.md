@@ -2,109 +2,127 @@
 
 Community game room management for a local mosque: member registration, attendance, equipment loans, public status board, and volunteer/admin dashboard.
 
-## Tech stack (Module 1)
+## Tech stack
 
 - Next.js 14 (App Router) + TypeScript + Tailwind CSS
 - Prisma ORM + PostgreSQL
-- Docker Compose for local database
+- JWT auth (`jose` + bcrypt), HTTP-only cookies
+- PWA (`@ducanh2912/next-pwa`) with offline action queue
+- i18n (`next-intl`) — English, Arabic, Urdu message catalogs
+- Charts (`recharts`), QR (`html5-qrcode`, `qrcode.react`)
 
 ## Local setup
 
 ### Prerequisites
 
-- Node.js 20+ (18+ also works)
+- Node.js 20+
 - Docker Desktop
 
-### 1. Install dependencies
+### Steps
 
 ```bash
 npm install
-```
-
-### 2. Start PostgreSQL
-
-```bash
 npm run db:up
-```
-
-### 3. Configure environment
-
-Copy `.env.example` to `.env` (already present after Module 1 setup):
-
-```env
-DATABASE_URL="postgresql://gameroom:gameroom@localhost:5432/gameroom?schema=public"
-JWT_SECRET="change-me-to-a-long-random-string"
-ADMIN_EMAIL="admin@mosque.local"
-ADMIN_PASSWORD="ChangeMeAdmin123!"
-```
-
-### 4. Migrate and seed
-
-```bash
-npx prisma migrate dev --name init
+cp .env.example .env   # then edit secrets
+npx prisma migrate deploy
 npm run db:seed
-```
-
-Seed creates:
-
-- One admin user from `ADMIN_EMAIL` / `ADMIN_PASSWORD`
-- All 46 equipment items
-- Default settings (opening hours, session limits, guest limit)
-- Waiver version 1
-- Sample announcement and event
-
-### 5. Run the app
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — the home page shows DB connection status and equipment count.
+Open [http://localhost:3000](http://localhost:3000).
+
+### Environment variables
+
+| Variable | Required | Notes |
+|----------|----------|--------|
+| `DATABASE_URL` | yes | Postgres connection string |
+| `JWT_SECRET` | yes | ≥ 32 chars; change for production |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | seed | Bootstrap admin |
+| `VOLUNTEER_*` / `MEMBER_*` | seed | Demo accounts |
 
 ### Useful scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run db:up` | Start Postgres container |
-| `npm run db:down` | Stop Postgres container |
-| `npm run db:migrate` | Run Prisma migrations |
-| `npm run db:seed` | Seed admin + inventory |
-| `npm run db:studio` | Open Prisma Studio |
-| `npm run dev` | Start Next.js dev server |
+| `npm run db:up` / `db:down` | Start/stop Postgres |
+| `npm run db:migrate` | Prisma migrate dev |
+| `npm run db:seed` | Seed admin + 46 equipment items |
+| `npm run db:studio` | Prisma Studio |
+| `npm run build` | Production build (generates service worker) |
+| `npm run start` | Run production server |
 
-## Auth (Module 2)
+## Role / permission matrix
 
-| Portal | URL | Test account |
-|--------|-----|--------------|
+| Capability | Public | Member | Volunteer | Admin |
+|------------|--------|--------|-----------|-------|
+| Status board | yes | yes | yes | yes |
+| Own profile / history | — | yes | — | — |
+| Sign-in/out, loans, register | — | — | yes | yes |
+| Inventory / users / analytics / audit / settings | — | — | — | yes |
+
+### Test accounts (after seed)
+
+| Role | URL | Credentials |
+|------|-----|-------------|
 | Member | `/portal/login` | `member@mosque.local` / `ChangeMeMember123!` |
-| Dashboard | `/dashboard/login` | `volunteer@mosque.local` / `ChangeMeVolunteer123!` |
-| Admin | `/dashboard/login` then `/dashboard/admin` | `admin@mosque.local` / `ChangeMeAdmin123!` |
+| Volunteer | `/dashboard/login` | `volunteer@mosque.local` / `ChangeMeVolunteer123!` |
+| Admin | `/dashboard/login` | `admin@mosque.local` / `ChangeMeAdmin123!` |
 
-JWT session cookies: `grms_access` (1h), `grms_refresh` (7d). Middleware guards `/portal/*`, `/dashboard/*`, and `/dashboard/admin/*`.
+## Feature map
 
-## Core APIs (Module 3)
+- **Public board** `/public` — live occupancy & equipment (12s polling)
+- **Member portal** `/portal` — profile, QR card, history, announcements
+- **Volunteer kiosk** `/dashboard` — search/QR, register, borrow/return, guests, checklist
+- **Admin** `/dashboard/admin` — analytics, inventory, users, shifts, content, settings, audit
 
-Staff-only (VOLUNTEER/ADMIN) unless noted:
+## i18n (adding a language)
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET/POST | `/api/members` | Search / register |
-| GET/PATCH | `/api/members/[id]` | Profile (members: self only) |
-| GET | `/api/members/by-qr/[payload]` | QR lookup |
-| POST | `/api/attendance/sign-in` | Room sign-in |
-| POST | `/api/attendance/sign-out` | Sign-out (+ force return loans) |
-| GET | `/api/attendance` | History / `?active=true` |
-| GET | `/api/equipment` | Inventory + loan/queue state |
-| PATCH | `/api/equipment/[id]/condition` | Condition update |
-| GET/POST | `/api/loans` | Active loans / borrow |
-| POST | `/api/loans/return` | Return one/all |
-| GET/POST/DELETE | `/api/queue` | Waiting queue |
-| POST | `/api/guests` | Issue guest pass |
-| POST/DELETE | `/api/guests/[id]` | Guest sign-in / sign-out |
-| GET | `/api/admin/audit` | Audit log (ADMIN) |
-| GET | `/api/public/occupancy` | Public occupancy |
-| GET | `/api/public/availability` | Public equipment counts |
+1. Copy `messages/en.json` → `messages/<code>.json`
+2. Translate values (keep keys identical)
+3. Add `<code>` to `locales` in [`src/i18n/config.ts`](src/i18n/config.ts)
+4. Import the catalog in [`src/components/i18n/I18nProvider.tsx`](src/components/i18n/I18nProvider.tsx)
+5. Add a label in [`src/components/i18n/LanguageSwitcher.tsx`](src/components/i18n/LanguageSwitcher.tsx)
+
+No route changes required — locale is stored in the `grms_locale` cookie.
+
+## Offline PWA (volunteer dashboard)
+
+- Production builds register a service worker (disabled in `next dev`)
+- Installable via browser “Add to Home Screen” / install prompt (`manifest.json`)
+- When offline, sign-in / sign-out / borrow / return / register are queued in IndexedDB
+- On reconnect, `/api/sync` replays the queue; conflicts (e.g. item already borrowed) surface as warnings for manual resolution
+- Connection status chip shows Online / Offline / Syncing + queued count
+
+## Deployment
+
+### Vercel + hosted Postgres
+
+1. Create a Postgres database (Neon, Supabase, Railway, etc.)
+2. Push schema: `npx prisma migrate deploy`
+3. Seed once: `npx prisma db seed` (set env vars in the host first)
+4. Import the GitHub repo into Vercel
+5. Set env vars: `DATABASE_URL`, `JWT_SECRET` (strong random), admin seed vars if needed
+6. Deploy — build command `npm run build`, output Next.js default
+
+### Docker (app + Postgres)
+
+Use the included [`docker-compose.yml`](docker-compose.yml) for Postgres locally. For a full app container, run:
+
+```bash
+npm run build
+npm run start
+```
+
+behind any Node host with `DATABASE_URL` and `JWT_SECRET` set. Point a reverse proxy (Caddy/Nginx) at port 3000 with HTTPS.
+
+### Production checklist
+
+- [ ] Rotate `JWT_SECRET` (not the example value)
+- [ ] Use managed Postgres with backups
+- [ ] Run `prisma migrate deploy` before first traffic
+- [ ] Change default admin/volunteer/member passwords
+- [ ] Confirm tablet can install the PWA over HTTPS
 
 ## Project status
 
-Modules 1–3 complete. Next: volunteer tablet UI (Module 4).
+All 7 modules complete: schema/seed, auth/RBAC, core APIs, volunteer kiosk, public + member portals, admin suite, i18n + offline PWA + deploy docs.

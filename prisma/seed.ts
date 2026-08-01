@@ -183,6 +183,16 @@ async function main() {
     { key: "waiverVersion", value: "1" },
     { key: "autoMinorIssueOnNotes", value: "true" },
     {
+      key: "communityRules",
+      value:
+        "1. Sign in and out with a volunteer.\n2. Treat all equipment with care.\n3. No food or drinks near consoles.\n4. Keep voices respectful — this is a shared community space.\n5. Return equipment when your turn is done.\n6. Guests must stay with their host member.",
+    },
+    {
+      key: "membershipInfo",
+      value:
+        "New members can register at the volunteer desk. Bring a photo ID if requested. Members under 18 need a parent or guardian to sign the waiver. After registration you receive a member QR card and portal login.",
+    },
+    {
       key: "equipmentTimeLimits",
       value: JSON.stringify({
         PS5_CONSOLE: 60,

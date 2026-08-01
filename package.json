@@ -17,13 +17,19 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@prisma/client": "5.22.0",
     "bcryptjs": "^3.0.3",
+    "html5-qrcode": "^2.3.8",
+    "idb-keyval": "^6.3.0",
     "jose": "^6.2.7",
     "nanoid": "^6.0.0",
     "next": "14.2.35",
+    "next-intl": "^4.13.4",
+    "qrcode.react": "^4.2.0",
     "react": "^18",
     "react-dom": "^18",
+    "recharts": "^3.10.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

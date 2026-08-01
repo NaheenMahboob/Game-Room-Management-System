@@ -1,5 +1,16 @@
 import { z } from "zod";
-import { ConditionStatus, EquipmentType } from "@prisma/client";
+
+const conditionStatusEnum = z.enum(["GOOD", "MINOR_ISSUE", "OUT_OF_ORDER"]);
+const equipmentTypeEnum = z.enum([
+  "PS5_CONSOLE",
+  "PS5_CONTROLLER",
+  "SWITCH_CONSOLE",
+  "SWITCH_CONTROLLER",
+  "TABLE_TENNIS",
+  "FOOSBALL",
+  "POOL",
+  "AIR_HOCKEY",
+]);
 
 export const registerMemberSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -50,7 +61,7 @@ export const returnLoanSchema = z.object({
 });
 
 export const conditionUpdateSchema = z.object({
-  conditionStatus: z.nativeEnum(ConditionStatus),
+  conditionStatus: conditionStatusEnum,
   notes: z.string().trim().max(2000).optional(),
 });
 
@@ -66,7 +77,7 @@ export const guestPassSchema = z.object({
 });
 
 export const equipmentListSchema = z.object({
-  type: z.nativeEnum(EquipmentType).optional(),
+  type: equipmentTypeEnum.optional(),
   includeInactive: z
     .enum(["true", "false"])
     .optional()

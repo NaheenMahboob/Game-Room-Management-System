@@ -1,40 +1,56 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth/session";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 
-export default async function AdminHomePage() {
-  const session = await getSession();
-  if (!session || session.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+const CARDS = [
+  {
+    href: "/dashboard/admin/analytics",
+    title: "Analytics",
+    desc: "Visits, popular equipment, community hours, CSV export",
+  },
+  {
+    href: "/dashboard/admin/inventory",
+    title: "Inventory",
+    desc: "Add, edit, deactivate equipment items",
+  },
+  {
+    href: "/dashboard/admin/users",
+    title: "Users & roles",
+    desc: "Create volunteers/admins, reset passwords",
+  },
+  {
+    href: "/dashboard/admin/shifts",
+    title: "Shift schedule",
+    desc: "Assign recurring volunteer shifts",
+  },
+  {
+    href: "/dashboard/admin/content",
+    title: "Announcements & events",
+    desc: "Public and member-facing content",
+  },
+  {
+    href: "/dashboard/admin/settings",
+    title: "Settings",
+    desc: "Hours, session limits, rules, guest limit",
+  },
+  {
+    href: "/dashboard/admin/audit",
+    title: "Audit log",
+    desc: "Immutable action history",
+  },
+];
 
+export default function AdminHomePage() {
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold">Admin</h1>
-            <p className="mt-2 text-slate-400">
-              Signed in as{" "}
-              <span className="font-mono text-emerald-300">{session.email}</span>
-            </p>
-          </div>
-          <LogoutButton />
-        </div>
-
-        <div className="rounded-xl border border-amber-500/30 bg-amber-950/30 p-5 text-sm text-amber-100">
-          Inventory, analytics, audit log, and settings will be built in Module
-          6. Auth + ADMIN role guard is active.
-        </div>
-
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {CARDS.map((card) => (
         <Link
-          href="/dashboard"
-          className="inline-block text-sm text-slate-300 hover:underline"
+          key={card.href}
+          href={card.href}
+          className="rounded-2xl border border-slate-700 bg-slate-900/70 p-5 hover:border-amber-500/40"
         >
-          ← Back to dashboard
+          <h2 className="text-lg font-semibold">{card.title}</h2>
+          <p className="mt-2 text-sm text-slate-400">{card.desc}</p>
         </Link>
-      </div>
-    </main>
+      ))}
+    </div>
   );
 }
