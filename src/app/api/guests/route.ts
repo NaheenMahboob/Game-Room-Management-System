@@ -9,6 +9,7 @@ import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { guestPassSchema } from "@/lib/validation/schemas";
 import { issueGuestPass } from "@/lib/services/guests";
 
+/** Issues a guest pass for a host member. */
 export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
   try {
     const body = await request.json();

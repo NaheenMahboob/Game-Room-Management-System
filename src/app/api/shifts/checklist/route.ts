@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 
+/** Opening checklist fields submitted at shift start. */
 const checklistSchema = z.object({
   equipmentCountVerified: z.boolean(),
   damageChecked: z.boolean(),
@@ -20,6 +21,7 @@ const checklistSchema = z.object({
   notes: z.string().max(2000).optional(),
 });
 
+/** Records a shift opening checklist for the current volunteer. */
 export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
   try {
     const body = checklistSchema.parse(await request.json());

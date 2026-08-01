@@ -14,8 +14,14 @@ import {
 import { minutesBetween } from "@/lib/members/rules";
 import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 
+/** Prisma client or an open transaction used for loan queries. */
 type Db = Prisma.TransactionClient | typeof prisma;
 
+/**
+ * Lists equipment with active loans, queue entries, availability, and time-limit alerts.
+ *
+ * @param options - Optional type filter and whether to include inactive items
+ */
 export async function listEquipment(options?: {
   type?: string;
   includeInactive?: boolean;
@@ -90,6 +96,7 @@ export async function listEquipment(options?: {
   });
 }
 
+/** Aggregates equipment counts by type (available, in use, condition buckets). */
 export async function getAvailabilityByType() {
   const items = await listEquipment({ includeInactive: false });
   const byType: Record<
@@ -126,6 +133,13 @@ export async function getAvailabilityByType() {
   return Object.values(byType);
 }
 
+/**
+ * Checks out one or more items for a signed-in active member.
+ *
+ * @param memberId - Borrower member id
+ * @param equipmentIds - Equipment to loan
+ * @param performedByUserId - Staff user recording the borrow
+ */
 export async function borrowEquipment(
   memberId: string,
   equipmentIds: string[],
@@ -195,6 +209,10 @@ export async function borrowEquipment(
   });
 }
 
+/**
+ * After a return, optionally marks equipment MINOR_ISSUE when notes are present
+ * and the `autoMinorIssueOnNotes` setting is enabled.
+ */
 async function applyReturnSideEffects(
   tx: Prisma.TransactionClient,
   equipmentId: string,
@@ -223,12 +241,21 @@ async function applyReturnSideEffects(
   }
 }
 
+/**
+ * Marks loans returned, applies return side effects, and writes audit entries.
+ *
+ * @param loanIds - Loans to close
+ * @param performedByUserId - Staff user performing the return
+ * @param conditionNotes - Optional notes shared across returned loans
+ * @param txClient - When set, runs inside an existing transaction
+ */
 export async function returnLoans(
   loanIds: string[],
   performedByUserId: string,
   conditionNotes?: string,
   txClient?: Prisma.TransactionClient
 ) {
+  /** Executes return logic within a transaction client. */
   const run = async (tx: Prisma.TransactionClient) => {
     const returned = [];
     for (const loanId of loanIds) {
@@ -280,6 +307,7 @@ export async function returnLoans(
   return prisma.$transaction(run);
 }
 
+/** Returns all outstanding loans for a member (optional shared condition notes). */
 export async function returnLoansForMember(
   memberId: string,
   performedByUserId: string,
@@ -299,6 +327,14 @@ export async function returnLoansForMember(
   );
 }
 
+/**
+ * Updates an equipment item's condition status and logs the change.
+ *
+ * @param equipmentId - Target equipment
+ * @param conditionStatus - New condition enum value
+ * @param performedByUserId - Staff user making the update
+ * @param notes - Optional free-text notes stored in audit details
+ */
 export async function updateEquipmentCondition(
   equipmentId: string,
   conditionStatus: ConditionStatus,
@@ -320,6 +356,11 @@ export async function updateEquipmentCondition(
   return equipment;
 }
 
+/**
+ * Lists open loans with duration and time-limit alert state.
+ *
+ * @param memberId - When set, limits results to that member
+ */
 export async function listActiveLoans(memberId?: string) {
   const timeLimits = await getEquipmentTimeLimits();
   const loans = await prisma.loan.findMany({

@@ -17,6 +17,11 @@ import {
   recordRateLimitHit,
 } from "@/lib/auth/rateLimit";
 
+/**
+ * Best-effort client IP from proxy headers or the socket address.
+ *
+ * @param request - Incoming Next.js request
+ */
 function clientIp(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0]!.trim() || "unknown";

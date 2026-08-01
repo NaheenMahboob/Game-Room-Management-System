@@ -26,6 +26,7 @@ const actionSchema = z.object({
   createdAt: z.string(),
 });
 
+/** Request body: batch of offline actions to replay in order. */
 const syncSchema = z.object({
   actions: z.array(actionSchema).max(100),
 });

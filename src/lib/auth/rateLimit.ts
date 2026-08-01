@@ -9,6 +9,7 @@
  * letting the member start again from attempt 1 on the same device.
  */
 
+/** In-memory counter and window expiry for one rate-limit key. */
 type RateBucket = {
   /** Failed attempts counted in the current window. */
   count: number;
@@ -22,6 +23,7 @@ export const LOGIN_RATE_LIMIT_MAX = 5;
 /** Window length for login attempts (15 minutes). */
 export const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
+/** Active rate-limit buckets keyed by namespaced string (e.g. `login:ip:…`). */
 const buckets = new Map<string, RateBucket>();
 
 /**

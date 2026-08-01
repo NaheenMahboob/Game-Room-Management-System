@@ -5,10 +5,23 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
+/**
+ * Returns a JSON success response.
+ *
+ * @param data - Response body
+ * @param status - HTTP status (default 200)
+ */
 export function jsonOk<T>(data: T, status = 200) {
   return NextResponse.json(data, { status });
 }
 
+/**
+ * Returns a JSON error response with optional validation or detail payload.
+ *
+ * @param error - Human-readable error message
+ * @param status - HTTP status (default 400)
+ * @param details - Optional structured details (e.g. Zod flatten output)
+ */
 export function jsonError(error: string, status = 400, details?: unknown) {
   return NextResponse.json(
     details === undefined ? { error } : { error, details },
@@ -16,6 +29,12 @@ export function jsonError(error: string, status = 400, details?: unknown) {
   );
 }
 
+/**
+ * Maps thrown errors from route handlers to appropriate JSON responses.
+ *
+ * @param error - Caught exception from a route handler
+ * @returns `NextResponse` with 400/404 for known errors, 500 otherwise
+ */
 export function handleRouteError(error: unknown) {
   if (error instanceof ZodError) {
     return jsonError("Validation failed", 400, error.flatten());

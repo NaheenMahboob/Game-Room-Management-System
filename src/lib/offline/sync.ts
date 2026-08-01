@@ -14,6 +14,7 @@ import {
   type OfflineActionType,
 } from "@/lib/offline/queue";
 
+/** API paths eligible for offline enqueue (registration excluded). */
 const QUEUEABLE = new Set<string>([
   "/api/attendance/sign-in",
   "/api/attendance/sign-out",
@@ -22,6 +23,7 @@ const QUEUEABLE = new Set<string>([
   // Desk registration is online-only (needs a real photo upload first).
 ]);
 
+/** Maps a queued request path and method to an {@link OfflineActionType}, if supported. */
 function inferType(path: string, method: string): OfflineActionType | null {
   if (path.startsWith("/api/attendance/sign-in")) return "SIGN_IN";
   if (path.startsWith("/api/attendance/sign-out")) return "SIGN_OUT";
@@ -30,6 +32,12 @@ function inferType(path: string, method: string): OfflineActionType | null {
   return null;
 }
 
+/**
+ * Dashboard API wrapper: enqueues mutating requests when offline, otherwise uses {@link apiFetch}.
+ *
+ * @param path - API path (query string stripped for queue eligibility)
+ * @param options - Fetch options; `queueWhenOffline` defaults to true
+ */
 export async function dashboardFetch<T>(
   path: string,
   options?: RequestInit & { allowStatuses?: number[]; queueWhenOffline?: boolean }
@@ -70,6 +78,7 @@ export async function dashboardFetch<T>(
   return apiFetch<T>(path, options);
 }
 
+/** Per-action outcome from the server-side offline sync endpoint. */
 export type SyncResult = {
   id: string;
   ok: boolean;

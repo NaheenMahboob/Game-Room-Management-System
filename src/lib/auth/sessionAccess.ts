@@ -5,12 +5,17 @@
 
 import type { Role } from "@/generated/prisma";
 
+/** Minimal session shape for portal vs desk authorization checks. */
 type SessionLike = {
   role: Role | string;
   memberId?: string;
 };
 
-/** True when the session is volunteer or admin desk staff. */
+/**
+ * True when the session is volunteer or admin desk staff.
+ *
+ * @param session - Current session
+ */
 export function isStaffRole(session: SessionLike): boolean {
   return session.role === "VOLUNTEER" || session.role === "ADMIN";
 }
@@ -18,6 +23,9 @@ export function isStaffRole(session: SessionLike): boolean {
 /**
  * True when the session is acting as this member (any role that still has a
  * linked Member profile — including promoted volunteers/admins).
+ *
+ * @param session - Current session
+ * @param memberId - Target member id
  */
 export function isMemberSelf(
   session: SessionLike,
@@ -26,7 +34,11 @@ export function isMemberSelf(
   return Boolean(session.memberId && session.memberId === memberId);
 }
 
-/** Portal access: linked member profile required (role may be staff). */
+/**
+ * Portal access: linked member profile required (role may be staff).
+ *
+ * @param session - Current session
+ */
 export function canUseMemberPortal(session: SessionLike): boolean {
   return Boolean(session.memberId);
 }

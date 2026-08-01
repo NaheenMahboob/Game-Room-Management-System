@@ -8,16 +8,24 @@ import { ACCESS_COOKIE } from "@/lib/auth/cookies";
 import { verifyAccessToken, type SessionPayload } from "@/lib/auth/jwt";
 import { prisma } from "@/lib/prisma";
 
+/** Request context passed to authenticated API route handlers. */
 export type AuthContext = {
   request: NextRequest;
   session: SessionPayload & { email: string };
 };
 
+/** Handler invoked after session resolution succeeds. */
 type RouteHandler = (
   ctx: AuthContext,
   params?: Record<string, string>
 ) => Promise<NextResponse> | NextResponse;
 
+/**
+ * Loads the current user from the access cookie and refreshes claims from the database.
+ *
+ * @param request - Incoming API request (cookie jar)
+ * @returns Session with email, or `null` when unauthenticated or user missing
+ */
 async function resolveSession(
   request: NextRequest
 ): Promise<(SessionPayload & { email: string }) | null> {
@@ -49,6 +57,12 @@ async function resolveSession(
   };
 }
 
+/**
+ * Wraps a route handler so it runs only when a valid session exists.
+ *
+ * @param handler - Authenticated handler receiving {@link AuthContext}
+ * @returns Next.js route handler that responds with 401 when unauthenticated
+ */
 export function withAuth(handler: RouteHandler) {
   return async (
     request: NextRequest,
@@ -65,6 +79,13 @@ export function withAuth(handler: RouteHandler) {
   };
 }
 
+/**
+ * Like {@link withAuth}, but requires the session role to be one of `roles`.
+ *
+ * @param roles - Allowed Prisma {@link Role} values
+ * @param handler - Handler run when role matches
+ * @returns Wrapped route handler (403 when role is not allowed)
+ */
 export function withRole(roles: Role[], handler: RouteHandler) {
   return withAuth(async (ctx, params) => {
     if (!roles.includes(ctx.session.role)) {

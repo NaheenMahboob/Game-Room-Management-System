@@ -25,6 +25,7 @@ import {
   recordRateLimitHit,
 } from "@/lib/auth/rateLimit";
 
+/** Login request body (email, password, portal target). */
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),

@@ -7,12 +7,14 @@ import { getSetting } from "@/lib/settings";
 import { getAvailabilityByType } from "@/lib/services/loans";
 import { getOccupancy } from "@/lib/services/attendance";
 
+/** True when an announcement's optional schedule window includes `now`. */
 function isActiveAnnouncement(now: Date, start?: Date | null, end?: Date | null) {
   if (start && start > now) return false;
   if (end && end < now) return false;
   return true;
 }
 
+/** Assembles occupancy, availability, settings, announcements, and events for the lobby board. */
 export async function getPublicBoardData() {
   const now = new Date();
   const [
@@ -59,6 +61,7 @@ export async function getPublicBoardData() {
   };
 }
 
+/** Returns scheduled announcements visible to members (general + members-only). */
 export async function getMemberAnnouncements() {
   const now = new Date();
   const announcements = await prisma.announcement.findMany({

@@ -9,6 +9,7 @@ import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { conditionUpdateSchema } from "@/lib/validation/schemas";
 import { updateEquipmentCondition } from "@/lib/services/loans";
 
+/** Updates condition status and optional notes for one equipment item. */
 export const PATCH = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }, rawParams) => {
   try {
     const params = rawParams as { id: string };

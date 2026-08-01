@@ -13,11 +13,13 @@ import { writeAuditLog } from "@/lib/audit/log";
 import { generateTempPassword } from "@/lib/members/ids";
 import { clearLoginRateLimitsForEmail } from "@/lib/auth/rateLimit";
 
+/** PATCH body for role change and/or password reset. */
 const updateUserSchema = z.object({
   role: z.enum(["MEMBER", "VOLUNTEER", "ADMIN"]).optional(),
   resetPassword: z.boolean().optional(),
 });
 
+/** Normalized bootstrap admin email from env (default seed address). */
 function bootstrapAdminEmail(): string {
   return (process.env.ADMIN_EMAIL ?? "admin@mosque.local").toLowerCase();
 }
@@ -27,6 +29,7 @@ function isBootstrapAdminEmail(email: string): boolean {
   return email.toLowerCase() === bootstrapAdminEmail();
 }
 
+/** Prisma select shape for admin user list and PATCH responses. */
 const userSelect = {
   id: true,
   email: true,
@@ -36,6 +39,7 @@ const userSelect = {
   member: { select: { id: true, fullName: true, membershipStatus: true } },
 } as const;
 
+/** User row shape returned from admin user list/PATCH queries. */
 type UserRow = {
   id: string;
   email: string;

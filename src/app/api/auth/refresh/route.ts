@@ -17,6 +17,11 @@ import {
   clearAuthCookies,
 } from "@/lib/auth/cookies";
 
+/**
+ * Rotates access and refresh tokens using the refresh cookie.
+ *
+ * @param request - Incoming request carrying the refresh cookie
+ */
 export async function POST(request: NextRequest) {
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   if (!refreshToken) {

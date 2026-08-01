@@ -9,6 +9,7 @@ import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 
+/** Lists all key/value settings. */
 export const GET = withRole(["ADMIN"], async () => {
   try {
     const settings = await prisma.setting.findMany({ orderBy: { key: "asc" } });
@@ -18,11 +19,13 @@ export const GET = withRole(["ADMIN"], async () => {
   }
 });
 
+/** Request body for upserting one setting by key. */
 const upsertSchema = z.object({
   key: z.string().min(1),
   value: z.string(),
 });
 
+/** Creates or updates a single setting value. */
 export const PUT = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const body = upsertSchema.parse(await request.json());

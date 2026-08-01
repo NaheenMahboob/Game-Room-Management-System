@@ -9,6 +9,7 @@ import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 
+/** Allowed equipment catalog types. */
 const equipmentTypeEnum = z.enum([
   "PS5_CONSOLE",
   "PS5_CONTROLLER",
@@ -20,6 +21,7 @@ const equipmentTypeEnum = z.enum([
   "AIR_HOCKEY",
 ]);
 
+/** Request body for creating an equipment item. */
 const createSchema = z.object({
   type: equipmentTypeEnum,
   label: z.string().trim().min(2).max(120),
@@ -29,6 +31,7 @@ const createSchema = z.object({
     .default("GOOD"),
 });
 
+/** Request body for updating an equipment item by id. */
 const updateSchema = z.object({
   id: z.string().cuid(),
   label: z.string().trim().min(2).max(120).optional(),
@@ -37,6 +40,7 @@ const updateSchema = z.object({
   type: equipmentTypeEnum.optional(),
 });
 
+/** Lists equipment with optional active-loan context. */
 export const GET = withRole(["ADMIN"], async () => {
   try {
     const equipment = await prisma.equipment.findMany({
@@ -55,6 +59,7 @@ export const GET = withRole(["ADMIN"], async () => {
   }
 });
 
+/** Creates a new equipment catalog entry. */
 export const POST = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const body = createSchema.parse(await request.json());
@@ -71,6 +76,7 @@ export const POST = withRole(["ADMIN"], async ({ request, session }) => {
   }
 });
 
+/** Updates label, type, condition, or active flag for one item. */
 export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const body = updateSchema.parse(await request.json());
@@ -88,6 +94,7 @@ export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
   }
 });
 
+/** Soft-deactivates or hard-deletes equipment (`hard=true` query). */
 export const DELETE = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const id = new URL(request.url).searchParams.get("id");

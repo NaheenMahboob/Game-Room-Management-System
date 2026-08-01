@@ -9,6 +9,7 @@ import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { returnLoanSchema } from "@/lib/validation/schemas";
 import { returnLoans, returnLoansForMember } from "@/lib/services/loans";
 
+/** Returns loans by id(s) or all loans for a member. */
 export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
   try {
     const body = await request.json();

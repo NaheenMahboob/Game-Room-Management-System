@@ -7,6 +7,14 @@ import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";
 import { getGuestLimit } from "@/lib/settings";
 
+/**
+ * Creates a guest pass for an active host member, enforcing per-host open-pass limits.
+ *
+ * @param hostMemberId - Member sponsoring the guest
+ * @param guestName - Guest display name
+ * @param guestPhone - Guest contact phone
+ * @param performedByUserId - Staff user issuing the pass
+ */
 export async function issueGuestPass(
   hostMemberId: string,
   guestName: string,
@@ -69,6 +77,12 @@ export async function issueGuestPass(
   };
 }
 
+/**
+ * Records guest arrival on an issued pass that is not already signed in.
+ *
+ * @param guestPassId - Guest pass to activate
+ * @param performedByUserId - Staff user performing sign-in
+ */
 export async function signInGuest(
   guestPassId: string,
   performedByUserId: string
@@ -109,6 +123,12 @@ export async function signInGuest(
   };
 }
 
+/**
+ * Closes an active guest visit and marks the pass signed out.
+ *
+ * @param guestPassId - Guest pass to close
+ * @param performedByUserId - Staff user performing sign-out
+ */
 export async function signOutGuest(
   guestPassId: string,
   performedByUserId: string

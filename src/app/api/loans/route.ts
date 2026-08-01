@@ -8,6 +8,7 @@ import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { borrowSchema } from "@/lib/validation/schemas";
 import { borrowEquipment, listActiveLoans } from "@/lib/services/loans";
 
+/** Lists active loans, optionally filtered by member. */
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   try {
     const { searchParams } = new URL(request.url);
@@ -19,6 +20,7 @@ export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   }
 });
 
+/** Borrows one or more equipment items for a member. */
 export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
   try {
     const body = await request.json();

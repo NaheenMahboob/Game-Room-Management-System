@@ -8,6 +8,7 @@ import { withRole } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { getAnalyticsSummary } from "@/lib/services/analytics";
 
+/** Returns dashboard analytics summary for admins. */
 export const GET = withRole(["ADMIN"], async () => {
   try {
     const analytics = await getAnalyticsSummary();

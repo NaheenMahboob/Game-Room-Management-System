@@ -10,12 +10,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { ACCESS_COOKIE } from "@/lib/auth/cookies";
 import { verifyAccessTokenEdge } from "@/lib/auth/jwt";
 
+/**
+ * Encodes `JWT_SECRET` for Edge JWT verification.
+ *
+ * @returns Secret bytes when configured (min length 32), otherwise `null`
+ */
 function getSecret(): Uint8Array | null {
   const secret = process.env.JWT_SECRET;
   if (!secret || secret.length < 32) return null;
   return new TextEncoder().encode(secret);
 }
 
+/**
+ * Protects `/portal/*` and `/dashboard/*` routes: redirects unauthenticated or
+ * unauthorized users and enforces password-change flows.
+ *
+ * @param request - Incoming Edge request
+ * @returns `NextResponse.next()` or redirect to login / change-password
+ */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -92,6 +104,7 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
+/** Paths matched by this middleware (portal and dashboard trees). */
 export const config = {
   matcher: ["/portal/:path*", "/dashboard/:path*"],
 };

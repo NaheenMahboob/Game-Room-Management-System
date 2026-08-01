@@ -28,6 +28,7 @@ const ALLOWED_MIME: Record<string, string> = {
   "image/webp": ".webp",
 };
 
+/** File extension (lowercase, with dot) to Content-Type for streaming. */
 const EXT_TO_MIME: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",

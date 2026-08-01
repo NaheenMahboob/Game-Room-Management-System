@@ -9,6 +9,7 @@ import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 
+/** Request body for assigning a volunteer shift slot. */
 const createSchema = z.object({
   volunteerUserId: z.string().cuid(),
   dayOfWeek: z.number().int().min(0).max(6),
@@ -17,6 +18,7 @@ const createSchema = z.object({
   recurring: z.boolean().default(true),
 });
 
+/** Lists shifts (all for admin, own rows for volunteers). */
 export const GET = withRole(["ADMIN", "VOLUNTEER"], async ({ session }) => {
   try {
     const shifts = await prisma.shift.findMany({
@@ -39,6 +41,7 @@ export const GET = withRole(["ADMIN", "VOLUNTEER"], async ({ session }) => {
   }
 });
 
+/** Creates a shift assignment for a volunteer user. */
 export const POST = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const body = createSchema.parse(await request.json());
@@ -66,6 +69,7 @@ export const POST = withRole(["ADMIN"], async ({ request, session }) => {
   }
 });
 
+/** Deletes a shift by `id` query param. */
 export const DELETE = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const id = new URL(request.url).searchParams.get("id");

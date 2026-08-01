@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 
+/** Zod schema for required and optional process environment variables. */
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
@@ -18,10 +19,13 @@ const envSchema = z.object({
   MEMBER_PASSWORD: z.string().min(8).optional(),
 });
 
+/** Validated environment variable shape inferred from {@link envSchema}. */
 export type Env = z.infer<typeof envSchema>;
 
+/** Memoized result of the first successful {@link getEnv} parse. */
 let cached: Env | null = null;
 
+/** Parses and caches environment variables; throws if validation fails. */
 export function getEnv(): Env {
   if (cached) return cached;
   const parsed = envSchema.safeParse(process.env);
@@ -36,6 +40,7 @@ export function getEnv(): Env {
   return cached;
 }
 
+/** UTF-8 bytes of `JWT_SECRET` for signing and verifying tokens. */
 export function getJwtSecret(): Uint8Array {
   const { JWT_SECRET } = getEnv();
   return new TextEncoder().encode(JWT_SECRET);

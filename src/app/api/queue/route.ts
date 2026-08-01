@@ -8,6 +8,7 @@ import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { queueJoinSchema } from "@/lib/validation/schemas";
 import { joinQueue, listQueue, removeFromQueue } from "@/lib/services/queue";
 
+/** Lists wait-queue entries, optionally for one equipment id. */
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   try {
     const { searchParams } = new URL(request.url);
@@ -18,6 +19,7 @@ export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   }
 });
 
+/** Adds a member to the equipment wait queue. */
 export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
   try {
     const body = await request.json();
@@ -29,6 +31,7 @@ export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }
   }
 });
 
+/** Removes a queue entry by `id` query param. */
 export const DELETE = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
   try {
     const { searchParams } = new URL(request.url);

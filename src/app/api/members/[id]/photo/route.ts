@@ -28,6 +28,7 @@ import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";
 import { prisma } from "@/lib/prisma";
 
+/** Whether the session may read or upload photos for this member. */
 function canAccessMemberPhoto(
   session: { role: string; memberId?: string },
   memberId: string
@@ -194,6 +195,7 @@ export const POST = withAuth(async ({ request, session }, rawParams) => {
   }
 });
 
+/** Staff review action for a pending photo retake. */
 const reviewSchema = z.object({
   action: z.enum(["approve", "reject"]),
 });

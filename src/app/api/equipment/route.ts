@@ -9,6 +9,7 @@ import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { equipmentListSchema } from "@/lib/validation/schemas";
 import { listEquipment } from "@/lib/services/loans";
 
+/** Lists borrowable equipment with optional filters. */
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   try {
     const { searchParams } = new URL(request.url);

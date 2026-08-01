@@ -27,6 +27,7 @@ export const GET = withRole(["VOLUNTEER", "ADMIN"], async () => {
   }
 });
 
+/** PATCH body for approving or rejecting a pending self-registration. */
 const actionSchema = z.object({
   memberId: z.string().cuid(),
   action: z.enum(["approve", "reject"]),

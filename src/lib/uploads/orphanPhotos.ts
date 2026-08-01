@@ -18,11 +18,14 @@ import {
 /** Keep recent uploads so an in-flight register is not raced. */
 export const DEFAULT_ORPHAN_PHOTO_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour
 
+/** Filename pattern for pre-registration uploads eligible for orphan cleanup. */
 const ORPHAN_NAME =
   /^(self|reg)-[\w.-]+\.(jpe?g|png|webp)$/i;
 
-/** In-process throttle so busy upload traffic does not readdir every request. */
+/** Timestamp (ms) of the last background sweep, for throttling. */
 let lastSweepAt = 0;
+
+/** Minimum time between automatic orphan photo sweeps (5 minutes). */
 const SWEEP_MIN_INTERVAL_MS = 5 * 60 * 1000;
 
 /**

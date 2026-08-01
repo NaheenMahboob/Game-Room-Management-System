@@ -9,12 +9,14 @@ import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 
+/** Request body for creating a community event. */
 const createSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
   eventDate: z.string().min(1),
 });
 
+/** Lists events ordered by date. */
 export const GET = withRole(["ADMIN"], async () => {
   try {
     const events = await prisma.event.findMany({
@@ -26,6 +28,7 @@ export const GET = withRole(["ADMIN"], async () => {
   }
 });
 
+/** Creates a new community event. */
 export const POST = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const body = createSchema.parse(await request.json());
@@ -48,6 +51,7 @@ export const POST = withRole(["ADMIN"], async ({ request, session }) => {
   }
 });
 
+/** Deletes an event by `id` query param. */
 export const DELETE = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const id = new URL(request.url).searchParams.get("id");

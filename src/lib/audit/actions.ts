@@ -2,6 +2,7 @@
  * Canonical audit action type strings persisted on `AuditLog.actionType`.
  * Keep values stable — reports and filters depend on exact string matches.
  */
+/** Stable string constants for `AuditLog.actionType` (see module doc). */
 export const AuditAction = {
   MEMBER_REGISTERED: "MEMBER_REGISTERED",
   MEMBER_UPDATED: "MEMBER_UPDATED",

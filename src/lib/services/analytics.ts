@@ -4,12 +4,17 @@
 
 import { prisma } from "@/lib/prisma";
 
+/** Returns a copy of `d` normalized to local midnight (00:00:00.000). */
 function startOfDay(d: Date) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   return x;
 }
 
+/**
+ * Builds admin dashboard analytics: visit trends, heatmaps, equipment usage,
+ * registrations, and condition breakdowns for the last 7–30 days.
+ */
 export async function getAnalyticsSummary() {
   const now = new Date();
   const last30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -149,9 +154,15 @@ export async function getAnalyticsSummary() {
   };
 }
 
+/**
+ * Serializes uniform row objects to a CSV string with RFC-style quoting.
+ *
+ * @param rows - Objects whose keys become the header row
+ */
 export function toCsv(rows: Record<string, string | number>[]) {
   if (rows.length === 0) return "";
   const headers = Object.keys(rows[0]!);
+  /** Escapes a cell value for CSV output. */
   const escape = (v: string | number) => {
     const s = String(v);
     if (s.includes(",") || s.includes('"') || s.includes("\n")) {

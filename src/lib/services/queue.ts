@@ -7,6 +7,13 @@ import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";
 import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 
+/**
+ * Adds a member to an equipment wait queue at the next position.
+ *
+ * @param equipmentId - Equipment being queued for
+ * @param memberId - Member joining the queue
+ * @param performedByUserId - Staff user recording the join
+ */
 export async function joinQueue(
   equipmentId: string,
   memberId: string,
@@ -60,6 +67,12 @@ export async function joinQueue(
   };
 }
 
+/**
+ * Marks a queue entry fulfilled (removed) without borrowing equipment.
+ *
+ * @param queueId - Open queue entry id
+ * @param performedByUserId - Staff user removing the entry
+ */
 export async function removeFromQueue(
   queueId: string,
   performedByUserId: string
@@ -90,6 +103,11 @@ export async function removeFromQueue(
   return { ok: true };
 }
 
+/**
+ * Lists unfulfilled queue entries, optionally filtered by equipment.
+ *
+ * @param equipmentId - When set, only entries for that equipment
+ */
 export async function listQueue(equipmentId?: string) {
   const entries = await prisma.equipmentQueue.findMany({
     where: {

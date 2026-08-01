@@ -11,6 +11,7 @@ import {
   listActiveSessions,
 } from "@/lib/services/attendance";
 
+/** Lists attendance history or active sessions with occupancy. */
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   try {
     const { searchParams } = new URL(request.url);

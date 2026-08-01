@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/api";
 
+/** Returns the authenticated user from the current session. */
 export const GET = withAuth(async ({ session }) => {
   return NextResponse.json({
     user: {

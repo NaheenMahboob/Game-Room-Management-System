@@ -9,6 +9,7 @@ import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 
+/** Request body for creating an announcement. */
 const createSchema = z.object({
   title: z.string().min(1),
   content: z.string().min(1),
@@ -17,6 +18,7 @@ const createSchema = z.object({
   scheduledEnd: z.string().optional(),
 });
 
+/** Lists all announcements (newest first). */
 export const GET = withRole(["ADMIN"], async () => {
   try {
     const announcements = await prisma.announcement.findMany({
@@ -28,6 +30,7 @@ export const GET = withRole(["ADMIN"], async () => {
   }
 });
 
+/** Creates an announcement with optional schedule window. */
 export const POST = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const body = createSchema.parse(await request.json());
@@ -54,6 +57,7 @@ export const POST = withRole(["ADMIN"], async ({ request, session }) => {
   }
 });
 
+/** Deletes an announcement by `id` query param. */
 export const DELETE = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const id = new URL(request.url).searchParams.get("id");

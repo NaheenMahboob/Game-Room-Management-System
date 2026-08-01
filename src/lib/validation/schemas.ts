@@ -6,7 +6,10 @@
 
 import { z } from "zod";
 
+/** Equipment condition values accepted on condition-update routes. */
 const conditionStatusEnum = z.enum(["GOOD", "MINOR_ISSUE", "OUT_OF_ORDER"]);
+
+/** Equipment category values for list/filter requests. */
 const equipmentTypeEnum = z.enum([
   "PS5_CONSOLE",
   "PS5_CONTROLLER",
@@ -75,16 +78,19 @@ export const signInSchema = z.object({
   photoVerified: z.literal(true),
 });
 
+/** Body for `POST /api/attendance/sign-out`. */
 export const signOutSchema = z.object({
   memberId: z.string().cuid(),
   forceReturnEquipment: z.boolean().optional().default(false),
 });
 
+/** Body for equipment borrow (one or more items for a member). */
 export const borrowSchema = z.object({
   memberId: z.string().cuid(),
   equipmentIds: z.array(z.string().cuid()).min(1).max(20),
 });
 
+/** Body for returning loans by id, member, or return-all flag. */
 export const returnLoanSchema = z.object({
   loanId: z.string().cuid().optional(),
   loanIds: z.array(z.string().cuid()).optional(),
@@ -93,22 +99,26 @@ export const returnLoanSchema = z.object({
   conditionNotes: z.string().trim().max(2000).optional(),
 });
 
+/** Body for updating an equipment item's condition status and notes. */
 export const conditionUpdateSchema = z.object({
   conditionStatus: conditionStatusEnum,
   notes: z.string().trim().max(2000).optional(),
 });
 
+/** Body for joining the wait queue for a piece of equipment. */
 export const queueJoinSchema = z.object({
   equipmentId: z.string().cuid(),
   memberId: z.string().cuid(),
 });
 
+/** Body for issuing a guest pass tied to a host member. */
 export const guestPassSchema = z.object({
   hostMemberId: z.string().cuid(),
   guestName: z.string().trim().min(2).max(120),
   guestPhone: z.string().trim().min(7).max(30),
 });
 
+/** Query params for listing equipment (optional type and inactive filter). */
 export const equipmentListSchema = z.object({
   type: equipmentTypeEnum.optional(),
   includeInactive: z

@@ -10,6 +10,7 @@ import { getAnalyticsSummary, toCsv } from "@/lib/services/analytics";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+/** Exports CSV for `type` (visits, equipment, members, or audit). */
 export const GET = withRole(["ADMIN"], async ({ request }) => {
   try {
     const type = new URL(request.url).searchParams.get("type") ?? "visits";

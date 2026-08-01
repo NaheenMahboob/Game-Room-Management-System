@@ -8,6 +8,7 @@ import { withRole } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { prisma } from "@/lib/prisma";
 
+/** Returns filtered audit log entries for the admin UI. */
 export const GET = withRole(["ADMIN"], async ({ request }) => {
   try {
     const { searchParams } = new URL(request.url);

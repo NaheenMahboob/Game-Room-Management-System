@@ -9,6 +9,7 @@ import { isMemberSelf, isStaffRole } from "@/lib/auth/sessionAccess";
 import { updateMemberSchema } from "@/lib/validation/schemas";
 import { getMemberById, updateMember } from "@/lib/services/members";
 
+/** Returns one member profile when the caller is staff or the linked member. */
 export const GET = withAuth(async ({ session }, rawParams) => {
   try {
     const params = rawParams as { id: string };
@@ -26,6 +27,7 @@ export const GET = withAuth(async ({ session }, rawParams) => {
   }
 });
 
+/** Updates member fields; self-edits cannot change membership status. */
 export const PATCH = withAuth(async ({ request, session }, rawParams) => {
   try {
     const params = rawParams as { id: string };

@@ -99,9 +99,12 @@ export async function getMemberByQr(qrPayload: string) {
   return member ? withClientPhotoUrl(member) : null;
 }
 
+/** Validated desk registration payload from {@link registerMemberSchema}. */
 type RegisterInput = z.infer<typeof registerMemberSchema>;
+/** Validated self-service registration payload from {@link selfRegisterMemberSchema}. */
 type SelfRegisterInput = z.infer<typeof selfRegisterMemberSchema>;
 
+/** Ensures phone and email are not already registered before creating a member. */
 async function assertUniquePhoneAndEmail(phone: string, email: string) {
   const existingPhone = await prisma.member.findUnique({ where: { phone } });
   if (existingPhone) {
@@ -391,6 +394,9 @@ export async function listPendingPhotoRetakes() {
 
 /**
  * Approves a pending photo retake: pending becomes live; previous live file deleted.
+ *
+ * @param memberId - Member with `pendingPhotoUrl` set
+ * @param approvedByUserId - Staff user approving the retake
  */
 export async function approvePendingPhoto(
   memberId: string,
@@ -427,6 +433,9 @@ export async function approvePendingPhoto(
 
 /**
  * Rejects a pending photo retake: deletes pending file; live photo unchanged.
+ *
+ * @param memberId - Member with `pendingPhotoUrl` set
+ * @param rejectedByUserId - Staff user rejecting the retake
  */
 export async function rejectPendingPhoto(
   memberId: string,
@@ -459,6 +468,7 @@ export async function rejectPendingPhoto(
   return withClientPhotoUrl(member);
 }
 
+/** Validated member profile update payload from {@link updateMemberSchema}. */
 type UpdateInput = z.infer<typeof updateMemberSchema>;
 
 /**

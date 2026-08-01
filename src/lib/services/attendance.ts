@@ -201,6 +201,11 @@ export async function signOutMember(
   };
 }
 
+/**
+ * Lists attendance history with session duration and active-session alerts.
+ *
+ * @param params - Optional filters (member, date range, name search, limit)
+ */
 export async function listAttendance(params: {
   memberId?: string;
   from?: Date;
@@ -252,6 +257,7 @@ export async function listAttendance(params: {
   });
 }
 
+/** Returns members currently signed in (open attendance, no sign-out). */
 export async function listActiveSessions() {
   return listAttendance({ limit: 200 }).then((rows) =>
     rows.filter((r) => !r.signOutTime)

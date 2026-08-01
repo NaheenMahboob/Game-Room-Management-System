@@ -12,6 +12,7 @@ import {
 import { registerMember, searchMembers } from "@/lib/services/members";
 import { deleteOrphanRegistrationPhoto } from "@/lib/uploads/memberPhoto";
 
+/** Searches members by query string (`q` required). */
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   try {
     const { searchParams } = new URL(request.url);

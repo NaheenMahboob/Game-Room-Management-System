@@ -9,6 +9,7 @@ import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { signOutSchema } from "@/lib/validation/schemas";
 import { signOutMember } from "@/lib/services/attendance";
 
+/** Signs a member out; may return 409 when loans need confirmation. */
 export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
   try {
     const body = await request.json();

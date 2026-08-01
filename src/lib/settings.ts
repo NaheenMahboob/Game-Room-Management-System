@@ -4,11 +4,13 @@
 
 import { prisma } from "@/lib/prisma";
 
+/** Reads a single `Setting` row value by key, or `null` if unset. */
 export async function getSetting(key: string): Promise<string | null> {
   const row = await prisma.setting.findUnique({ where: { key } });
   return row?.value ?? null;
 }
 
+/** Parses a numeric setting, returning `fallback` when missing or invalid. */
 export async function getSettingNumber(
   key: string,
   fallback: number
@@ -19,6 +21,7 @@ export async function getSettingNumber(
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** Parses a boolean setting (`true` / `1`), returning `fallback` when missing. */
 export async function getSettingBoolean(
   key: string,
   fallback: boolean
@@ -28,18 +31,22 @@ export async function getSettingBoolean(
   return value === "true" || value === "1";
 }
 
+/** Current waiver version number from settings (default `1`). */
 export async function getCurrentWaiverVersion(): Promise<number> {
   return getSettingNumber("waiverVersion", 1);
 }
 
+/** Maximum play session length in minutes (default `120`). */
 export async function getMaxSessionDuration(): Promise<number> {
   return getSettingNumber("maxSessionDuration", 120);
 }
 
+/** Maximum guests per host member (default `2`). */
 export async function getGuestLimit(): Promise<number> {
   return getSettingNumber("guestLimit", 2);
 }
 
+/** Per-equipment time limits (minutes) parsed from a JSON setting blob. */
 export async function getEquipmentTimeLimits(): Promise<Record<string, number>> {
   const raw = await getSetting("equipmentTimeLimits");
   if (!raw) return {};

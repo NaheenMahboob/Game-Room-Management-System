@@ -7,6 +7,7 @@
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { getPublicBoardData } from "@/lib/services/publicBoard";
 
+/** Returns the public lobby board payload (no auth). */
 export async function GET() {
   try {
     const board = await getPublicBoardData();
