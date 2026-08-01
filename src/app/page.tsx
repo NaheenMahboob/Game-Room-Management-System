@@ -1,5 +1,6 @@
 /**
  * Home landing page: open/closed status from operating hours plus portal links.
+ * When the database is unreachable, only a generic hours-unavailable message is shown.
  */
 
 import {
@@ -13,13 +14,13 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   let openingHours: OpeningHoursMap | null = null;
-  let hoursError: string | null = null;
+  // Do not expose connection/driver error text on the public home page.
+  let hoursUnavailable = false;
 
   try {
     openingHours = await getOpeningHours();
-  } catch (error) {
-    hoursError =
-      error instanceof Error ? error.message : "Could not load opening hours";
+  } catch {
+    hoursUnavailable = true;
   }
 
   const status = getOpenClosedStatus(openingHours);
@@ -31,7 +32,7 @@ export default async function Home() {
         dayKey={status.dayKey}
         todayHours={status.today}
         openingHours={openingHours}
-        hoursError={hoursError}
+        hoursUnavailable={hoursUnavailable}
       />
     </main>
   );

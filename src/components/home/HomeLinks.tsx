@@ -29,21 +29,21 @@ type HomeLinksProps = {
   todayHours: DayHours | null;
   /** Full weekly schedule from settings. */
   openingHours: OpeningHoursMap | null;
-  /** Set when settings could not be loaded (e.g. DB down). */
-  hoursError: string | null;
+  /** True when opening hours could not be loaded (typically DB unreachable). */
+  hoursUnavailable: boolean;
 };
 
 /**
  * Renders the public home landing content.
  *
- * @param props - Open/closed status and schedule plus error state
+ * @param props - Open/closed status and schedule plus unavailable flag
  */
 export function HomeLinks({
   isOpen,
   dayKey,
   todayHours,
   openingHours,
-  hoursError,
+  hoursUnavailable,
 }: HomeLinksProps) {
   const t = useTranslations("app");
 
@@ -57,10 +57,11 @@ export function HomeLinks({
         <LanguageSwitcher />
       </div>
 
-      {hoursError ? (
+      {hoursUnavailable ? (
         <div className="rounded-lg border border-red-500/40 bg-red-950/40 p-4 text-red-200">
+          {/* Keep this generic — never surface raw DB/driver errors on the public home page. */}
           <p className="font-medium">{t("hoursUnavailable")}</p>
-          <p className="mt-2 break-words text-sm">{hoursError}</p>
+          <p className="mt-2 text-sm">{t("cantReachDatabase")}</p>
         </div>
       ) : (
         <div

@@ -12,6 +12,7 @@
     "operatingHours": "اوقات کار",
     "closedDay": "بند",
     "hoursUnavailable": "اوقات کار دستیاب نہیں",
+    "cantReachDatabase": "ڈیٹا بیس تک رسائی نہیں ہو سکی",
     "language": "زبان",
     "days": {
       "monday": "پیر",

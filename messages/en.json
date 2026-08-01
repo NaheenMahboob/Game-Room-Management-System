@@ -11,7 +11,8 @@
     "noHoursToday": "No hours set for today.",
     "operatingHours": "Operating hours",
     "closedDay": "Closed",
-    "hoursUnavailable": "Opening hours unavailable",
+    "hoursUnavailable": "Opening hours not available",
+    "cantReachDatabase": "Can't reach database",
     "language": "Language",
     "days": {
       "monday": "Monday",

@@ -12,6 +12,7 @@
     "operatingHours": "ساعات العمل",
     "closedDay": "مغلق",
     "hoursUnavailable": "ساعات العمل غير متاحة",
+    "cantReachDatabase": "تعذر الوصول إلى قاعدة البيانات",
     "language": "اللغة",
     "days": {
       "monday": "الاثنين",
