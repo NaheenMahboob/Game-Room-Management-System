@@ -5,8 +5,23 @@
     "publicBoard": "لوحة الحالة العامة",
     "memberPortal": "بوابة الأعضاء",
     "dashboard": "لوحة المتطوعين / الإدارة",
-    "dbConnected": "قاعدة البيانات متصلة",
-    "language": "اللغة"
+    "weAreOpen": "نحن مفتوحون",
+    "weAreClosed": "نحن مغلقون",
+    "todayHours": "اليوم ({day}): {open} – {close}",
+    "noHoursToday": "لا توجد ساعات محددة لهذا اليوم.",
+    "operatingHours": "ساعات العمل",
+    "closedDay": "مغلق",
+    "hoursUnavailable": "ساعات العمل غير متاحة",
+    "language": "اللغة",
+    "days": {
+      "monday": "الاثنين",
+      "tuesday": "الثلاثاء",
+      "wednesday": "الأربعاء",
+      "thursday": "الخميس",
+      "friday": "الجمعة",
+      "saturday": "السبت",
+      "sunday": "الأحد"
+    }
   },
   "nav": {
     "home": "الرئيسية",

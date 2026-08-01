@@ -1,18 +1,50 @@
 "use client";
 
+/**
+ * Home navigation card: open/closed badge, today's hours, weekly schedule, and
+ * links to the public board, member portal, and staff dashboard.
+ */
+
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import type { DayHours, OpeningHoursMap } from "@/lib/settings";
 
+const DAY_ORDER = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
+type HomeLinksProps = {
+  /** Whether the room is open at the time the page was rendered. */
+  isOpen: boolean;
+  /** Lowercase weekday key for today (`monday`, …). */
+  dayKey: string;
+  /** Today's open/close times, if configured. */
+  todayHours: DayHours | null;
+  /** Full weekly schedule from settings. */
+  openingHours: OpeningHoursMap | null;
+  /** Set when settings could not be loaded (e.g. DB down). */
+  hoursError: string | null;
+};
+
+/**
+ * Renders the public home landing content.
+ *
+ * @param props - Open/closed status and schedule plus error state
+ */
 export function HomeLinks({
-  equipmentCount,
-  adminEmail,
-  dbError,
-}: {
-  equipmentCount: number;
-  adminEmail: string | null;
-  dbError: string | null;
-}) {
+  isOpen,
+  dayKey,
+  todayHours,
+  openingHours,
+  hoursError,
+}: HomeLinksProps) {
   const t = useTranslations("app");
 
   return (
@@ -25,20 +57,61 @@ export function HomeLinks({
         <LanguageSwitcher />
       </div>
 
-      {dbError ? (
+      {hoursError ? (
         <div className="rounded-lg border border-red-500/40 bg-red-950/40 p-4 text-red-200">
-          <p className="font-medium">Database connection failed</p>
-          <p className="mt-2 break-words text-sm">{dbError}</p>
+          <p className="font-medium">{t("hoursUnavailable")}</p>
+          <p className="mt-2 break-words text-sm">{hoursError}</p>
         </div>
       ) : (
-        <div className="space-y-2 rounded-lg border border-emerald-500/40 bg-emerald-950/40 p-4 text-emerald-100">
-          <p className="font-medium">{t("dbConnected")}</p>
-          <p>
-            Equipment: <span className="font-mono text-lg">{equipmentCount}</span>
+        <div
+          className={`space-y-3 rounded-lg border p-4 ${
+            isOpen
+              ? "border-emerald-500/40 bg-emerald-950/40 text-emerald-100"
+              : "border-slate-600 bg-slate-900/70 text-slate-200"
+          }`}
+        >
+          <p className="text-2xl font-semibold tracking-tight">
+            {isOpen ? t("weAreOpen") : t("weAreClosed")}
           </p>
-          <p>
-            Admin: <span className="font-mono">{adminEmail ?? "n/a"}</span>
-          </p>
+          {todayHours ? (
+            <p className="text-sm">
+              {t("todayHours", {
+                day: t(`days.${dayKey}`),
+                open: todayHours.open,
+                close: todayHours.close,
+              })}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-400">{t("noHoursToday")}</p>
+          )}
+
+          {openingHours ? (
+            <div className="border-t border-white/10 pt-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {t("operatingHours")}
+              </p>
+              <ul className="space-y-1 text-sm">
+                {DAY_ORDER.map((day) => {
+                  const hours = openingHours[day];
+                  return (
+                    <li
+                      key={day}
+                      className={`flex justify-between gap-3 ${
+                        day === dayKey ? "font-semibold text-teal-200" : ""
+                      }`}
+                    >
+                      <span>{t(`days.${day}`)}</span>
+                      <span className="tabular-nums text-slate-300">
+                        {hours
+                          ? `${hours.open} – ${hours.close}`
+                          : t("closedDay")}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
         </div>
       )}
 

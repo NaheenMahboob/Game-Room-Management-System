@@ -5,8 +5,23 @@
     "publicBoard": "عوامی سٹیٹس بورڈ",
     "memberPortal": "ممبر پورٹل",
     "dashboard": "والنٹیئر / ایڈمن ڈیش بورڈ",
-    "dbConnected": "ڈیٹا بیس منسلک",
-    "language": "زبان"
+    "weAreOpen": "ہم کھلے ہیں",
+    "weAreClosed": "ہم بند ہیں",
+    "todayHours": "آج ({day}): {open} – {close}",
+    "noHoursToday": "آج کے لیے اوقات مقرر نہیں۔",
+    "operatingHours": "اوقات کار",
+    "closedDay": "بند",
+    "hoursUnavailable": "اوقات کار دستیاب نہیں",
+    "language": "زبان",
+    "days": {
+      "monday": "پیر",
+      "tuesday": "منگل",
+      "wednesday": "بدھ",
+      "thursday": "جمعرات",
+      "friday": "جمعہ",
+      "saturday": "ہفتہ",
+      "sunday": "اتوار"
+    }
   },
   "nav": {
     "home": "ہوم",

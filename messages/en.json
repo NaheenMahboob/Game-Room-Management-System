@@ -5,8 +5,23 @@
     "publicBoard": "Public status board",
     "memberPortal": "Member portal",
     "dashboard": "Volunteer / Admin dashboard",
-    "dbConnected": "DB connected",
-    "language": "Language"
+    "weAreOpen": "We are open",
+    "weAreClosed": "We are closed",
+    "todayHours": "Today ({day}): {open} – {close}",
+    "noHoursToday": "No hours set for today.",
+    "operatingHours": "Operating hours",
+    "closedDay": "Closed",
+    "hoursUnavailable": "Opening hours unavailable",
+    "language": "Language",
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    }
   },
   "nav": {
     "home": "Home",

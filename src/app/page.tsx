@@ -1,30 +1,37 @@
-import { prisma } from "@/lib/prisma";
+/**
+ * Home landing page: open/closed status from operating hours plus portal links.
+ */
+
+import {
+  getOpeningHours,
+  getOpenClosedStatus,
+  type OpeningHoursMap,
+} from "@/lib/settings";
 import { HomeLinks } from "@/components/home/HomeLinks";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  let equipmentCount = 0;
-  let adminEmail: string | null = null;
-  let dbError: string | null = null;
+  let openingHours: OpeningHoursMap | null = null;
+  let hoursError: string | null = null;
 
   try {
-    equipmentCount = await prisma.equipment.count();
-    const admin = await prisma.user.findFirst({
-      where: { role: "ADMIN" },
-      select: { email: true },
-    });
-    adminEmail = admin?.email ?? null;
+    openingHours = await getOpeningHours();
   } catch (error) {
-    dbError = error instanceof Error ? error.message : "Unknown database error";
+    hoursError =
+      error instanceof Error ? error.message : "Could not load opening hours";
   }
+
+  const status = getOpenClosedStatus(openingHours);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 p-8 text-slate-100">
       <HomeLinks
-        equipmentCount={equipmentCount}
-        adminEmail={adminEmail}
-        dbError={dbError}
+        isOpen={status.isOpen}
+        dayKey={status.dayKey}
+        todayHours={status.today}
+        openingHours={openingHours}
+        hoursError={hoursError}
       />
     </main>
   );
