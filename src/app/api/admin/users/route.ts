@@ -18,6 +18,15 @@ const updateUserSchema = z.object({
   resetPassword: z.boolean().optional(),
 });
 
+function bootstrapAdminEmail(): string {
+  return (process.env.ADMIN_EMAIL ?? "admin@mosque.local").toLowerCase();
+}
+
+/** True when this email is the seeded / env bootstrap admin account. */
+function isBootstrapAdminEmail(email: string): boolean {
+  return email.toLowerCase() === bootstrapAdminEmail();
+}
+
 const userSelect = {
   id: true,
   email: true,
@@ -26,6 +35,27 @@ const userSelect = {
   createdAt: true,
   member: { select: { id: true, fullName: true, membershipStatus: true } },
 } as const;
+
+type UserRow = {
+  id: string;
+  email: string;
+  role: string;
+  mustChangePassword: boolean;
+  createdAt: Date;
+  member: {
+    id: string;
+    fullName: string;
+    membershipStatus: string;
+  } | null;
+};
+
+/** Adds `isBootstrap` so the admin UI can disable demotion without hardcoding the email. */
+function withBootstrapFlag<T extends UserRow>(user: T) {
+  return {
+    ...user,
+    isBootstrap: isBootstrapAdminEmail(user.email),
+  };
+}
 
 /**
  * Lists or searches existing users for role/password management.
@@ -52,7 +82,7 @@ export const GET = withRole(["ADMIN"], async ({ request }) => {
       take: q ? 50 : 100,
       select: userSelect,
     });
-    return jsonOk({ users });
+    return jsonOk({ users: users.map(withBootstrapFlag) });
   } catch (error) {
     return handleRouteError(error);
   }
@@ -101,12 +131,9 @@ export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
         return jsonError("You cannot change your own role", 400);
       }
 
-      const bootstrapEmail = (
-        process.env.ADMIN_EMAIL ?? "admin@mosque.local"
-      ).toLowerCase();
       // Seed / env bootstrap admin must stay ADMIN.
       if (
-        existing.email.toLowerCase() === bootstrapEmail &&
+        isBootstrapAdminEmail(existing.email) &&
         existing.role === "ADMIN" &&
         body.role !== "ADMIN"
       ) {
@@ -150,7 +177,7 @@ export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
       },
     });
 
-    return jsonOk({ user, temporaryPassword });
+    return jsonOk({ user: withBootstrapFlag(user), temporaryPassword });
   } catch (error) {
     return handleRouteError(error);
   }

@@ -1,3 +1,9 @@
+/**
+ * `GET /api/portal/announcements`
+ *
+ * Announcements for the member portal (linked member profile required).
+ */
+
 import { withAuth } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { getMemberAnnouncements } from "@/lib/services/publicBoard";

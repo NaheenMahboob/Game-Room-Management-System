@@ -1,3 +1,7 @@
+/**
+ * Guest pass issuance and guest sign-in/out against host limits.
+ */
+
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";

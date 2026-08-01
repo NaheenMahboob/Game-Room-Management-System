@@ -1,3 +1,8 @@
+/**
+ * Member search and desk registration for staff.
+ * GET requires `q`; POST registers a member at the volunteer desk.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import {

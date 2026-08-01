@@ -1,3 +1,8 @@
+/**
+ * Attendance listing and live occupancy for staff.
+ * `active=true` returns open sessions plus occupancy counts.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import {

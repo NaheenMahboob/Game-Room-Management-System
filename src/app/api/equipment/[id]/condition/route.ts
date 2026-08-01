@@ -1,3 +1,9 @@
+/**
+ * `PATCH /api/equipment/[id]/condition`
+ *
+ * Updates an equipment item's condition status and optional notes.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { conditionUpdateSchema } from "@/lib/validation/schemas";

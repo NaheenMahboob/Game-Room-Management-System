@@ -1,3 +1,8 @@
+/**
+ * Equipment wait-queue API for staff.
+ * GET lists queue entries; POST adds a member; DELETE removes an entry.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { queueJoinSchema } from "@/lib/validation/schemas";

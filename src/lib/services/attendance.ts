@@ -1,3 +1,7 @@
+/**
+ * Sign-in/out, occupancy, and attendance listing business logic.
+ */
+
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";

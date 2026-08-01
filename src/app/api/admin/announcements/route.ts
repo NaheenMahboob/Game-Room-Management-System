@@ -1,3 +1,8 @@
+/**
+ * Admin announcements API.
+ * GET lists all announcements; POST creates one with optional scheduling.
+ */
+
 import { z } from "zod";
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";

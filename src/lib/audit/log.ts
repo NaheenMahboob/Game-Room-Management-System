@@ -1,3 +1,7 @@
+/**
+ * Append-only audit log writer. Never update or delete persisted rows.
+ */
+
 import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import type { AuditActionType } from "@/lib/audit/actions";
@@ -10,7 +14,6 @@ type WriteAuditInput = {
   details?: Prisma.InputJsonValue;
 };
 
-/** Append-only audit log writer. Never update or delete. */
 export async function writeAuditLog(
   input: WriteAuditInput,
   tx?: Prisma.TransactionClient

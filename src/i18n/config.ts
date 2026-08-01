@@ -1,3 +1,7 @@
+/**
+ * Supported locales, default locale, and RTL helpers for the UI.
+ */
+
 export const locales = ["en", "ar", "ur"] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = "en";

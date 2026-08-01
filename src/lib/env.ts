@@ -1,3 +1,7 @@
+/**
+ * Validated environment variables and JWT secret encoding for auth.
+ */
+
 import { z } from "zod";
 
 const envSchema = z.object({

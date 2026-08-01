@@ -1,3 +1,9 @@
+/**
+ * `GET /api/admin/analytics`
+ *
+ * Returns aggregated analytics summary for the admin dashboard.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { getAnalyticsSummary } from "@/lib/services/analytics";

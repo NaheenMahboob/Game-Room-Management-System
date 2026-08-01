@@ -1,3 +1,8 @@
+/**
+ * Admin equipment catalog API.
+ * CRUD for equipment items, types, condition, and active flag.
+ */
+
 import { z } from "zod";
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";

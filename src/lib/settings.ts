@@ -1,3 +1,7 @@
+/**
+ * Typed readers for `Setting` key/value rows (waiver, limits, JSON blobs).
+ */
+
 import { prisma } from "@/lib/prisma";
 
 export async function getSetting(key: string): Promise<string | null> {

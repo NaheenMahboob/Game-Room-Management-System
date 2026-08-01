@@ -1,3 +1,8 @@
+/**
+ * Equipment loans API for staff.
+ * GET lists active loans; POST borrows equipment for a member.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { borrowSchema } from "@/lib/validation/schemas";

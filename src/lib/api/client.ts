@@ -1,3 +1,7 @@
+/**
+ * Browser `fetch` wrapper for JSON API calls with consistent error handling.
+ */
+
 export async function apiFetch<T>(
   path: string,
   options?: RequestInit & { allowStatuses?: number[] }

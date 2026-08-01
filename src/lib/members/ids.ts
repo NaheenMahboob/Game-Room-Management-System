@@ -1,3 +1,7 @@
+/**
+ * Member QR payload and temporary password generators.
+ */
+
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
 

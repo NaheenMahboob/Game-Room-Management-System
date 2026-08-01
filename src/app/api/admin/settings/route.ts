@@ -1,3 +1,8 @@
+/**
+ * Admin key/value settings API.
+ * GET lists settings; PUT upserts a single setting with audit logging.
+ */
+
 import { z } from "zod";
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";

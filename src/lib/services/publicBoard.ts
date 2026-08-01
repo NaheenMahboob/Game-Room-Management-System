@@ -1,3 +1,7 @@
+/**
+ * Public lobby board and portal announcement data assembly.
+ */
+
 import { prisma } from "@/lib/prisma";
 import { getSetting } from "@/lib/settings";
 import { getAvailabilityByType } from "@/lib/services/loans";

@@ -1,3 +1,9 @@
+/**
+ * `POST /api/shifts/checklist`
+ *
+ * Submits a volunteer shift opening checklist (creates a shift slot if needed).
+ */
+
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withRole } from "@/lib/auth/api";

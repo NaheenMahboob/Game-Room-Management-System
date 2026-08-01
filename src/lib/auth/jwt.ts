@@ -1,3 +1,7 @@
+/**
+ * Access and refresh JWT sign/verify helpers (jose) and token TTL constants.
+ */
+
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import type { Role } from "@/generated/prisma";
 import { getJwtSecret } from "@/lib/env";

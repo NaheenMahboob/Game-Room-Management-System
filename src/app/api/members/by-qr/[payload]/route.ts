@@ -1,3 +1,9 @@
+/**
+ * `GET /api/members/by-qr/[payload]`
+ *
+ * Looks up a member by QR payload for desk check-in flows.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { getMemberByQr } from "@/lib/services/members";

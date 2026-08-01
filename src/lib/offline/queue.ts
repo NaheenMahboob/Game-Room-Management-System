@@ -1,3 +1,7 @@
+/**
+ * IndexedDB queue for dashboard actions captured while the browser is offline.
+ */
+
 "use client";
 
 import { get, set, del, update } from "idb-keyval";

@@ -1,3 +1,8 @@
+/**
+ * Admin community events API.
+ * GET lists upcoming events; POST creates a new event.
+ */
+
 import { z } from "zod";
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";

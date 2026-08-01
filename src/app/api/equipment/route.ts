@@ -1,3 +1,9 @@
+/**
+ * `GET /api/equipment`
+ *
+ * Staff equipment list with optional type and inactive filters.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { equipmentListSchema } from "@/lib/validation/schemas";

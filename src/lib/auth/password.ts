@@ -1,3 +1,7 @@
+/**
+ * bcrypt password hashing and verification for user accounts.
+ */
+
 import bcrypt from "bcryptjs";
 
 const ROUNDS = 12;

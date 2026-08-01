@@ -1,3 +1,9 @@
+/**
+ * `POST /api/guests`
+ *
+ * Issues a guest pass linked to a host member.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { guestPassSchema } from "@/lib/validation/schemas";

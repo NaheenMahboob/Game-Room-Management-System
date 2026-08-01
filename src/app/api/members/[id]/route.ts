@@ -1,3 +1,8 @@
+/**
+ * Single-member profile API.
+ * Staff may read/update any member; linked members may read/edit self only.
+ */
+
 import { withAuth } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { isMemberSelf, isStaffRole } from "@/lib/auth/sessionAccess";

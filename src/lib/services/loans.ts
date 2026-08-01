@@ -1,3 +1,7 @@
+/**
+ * Equipment catalog, borrow/return flows, availability, and condition updates.
+ */
+
 import type { Prisma } from "@/generated/prisma";
 import { ConditionStatus } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";

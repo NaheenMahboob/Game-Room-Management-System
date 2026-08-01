@@ -1,3 +1,9 @@
+/**
+ * `POST /api/attendance/sign-out`
+ *
+ * Signs a member out; may require confirmation when equipment is still on loan.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { signOutSchema } from "@/lib/validation/schemas";

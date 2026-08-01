@@ -1,3 +1,9 @@
+/**
+ * `GET /api/auth/me`
+ *
+ * Returns the current session user (id, email, role, memberId).
+ */
+
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/api";
 

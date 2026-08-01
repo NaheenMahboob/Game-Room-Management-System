@@ -1,3 +1,9 @@
+/**
+ * `POST /api/loans/return`
+ *
+ * Returns one or more loans, or all loans for a member.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { returnLoanSchema } from "@/lib/validation/schemas";

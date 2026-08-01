@@ -1,3 +1,9 @@
+/**
+ * `GET /api/public/occupancy`
+ *
+ * Public headcount for members and guests currently inside.
+ */
+
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { getOccupancy } from "@/lib/services/attendance";
 

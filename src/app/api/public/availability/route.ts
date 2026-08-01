@@ -1,3 +1,9 @@
+/**
+ * `GET /api/public/availability`
+ *
+ * Public aggregated equipment availability for the status board.
+ */
+
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { getAvailabilityByType } from "@/lib/services/loans";
 

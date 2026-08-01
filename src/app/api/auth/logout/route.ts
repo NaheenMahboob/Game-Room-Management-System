@@ -1,3 +1,9 @@
+/**
+ * `POST /api/auth/logout`
+ *
+ * Clears access and refresh auth cookies.
+ */
+
 import { NextResponse } from "next/server";
 import { clearAuthCookies } from "@/lib/auth/cookies";
 

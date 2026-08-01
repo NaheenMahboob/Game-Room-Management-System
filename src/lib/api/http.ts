@@ -1,3 +1,7 @@
+/**
+ * Next.js route helpers: JSON responses and shared error mapping (Zod, business rules).
+ */
+
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 

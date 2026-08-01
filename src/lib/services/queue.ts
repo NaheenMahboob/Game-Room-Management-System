@@ -1,3 +1,7 @@
+/**
+ * Per-equipment wait queue join, list, and remove operations.
+ */
+
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";

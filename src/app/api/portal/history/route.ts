@@ -1,3 +1,9 @@
+/**
+ * `GET /api/portal/history`
+ *
+ * Visit and loan history for the authenticated member profile.
+ */
+
 import { withAuth } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { prisma } from "@/lib/prisma";

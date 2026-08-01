@@ -1,3 +1,7 @@
+/**
+ * Offline-aware dashboard fetch: replays queued actions when back online.
+ */
+
 "use client";
 
 import { apiFetch } from "@/lib/api/client";

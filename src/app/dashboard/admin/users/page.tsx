@@ -16,6 +16,8 @@ type User = {
   role: string;
   mustChangePassword: boolean;
   createdAt: string;
+  /** True for the ADMIN_EMAIL / seed bootstrap account — role cannot be demoted. */
+  isBootstrap?: boolean;
   member: {
     id: string;
     fullName: string;
@@ -34,8 +36,6 @@ export default function AdminUsersPage() {
   } | null>(null);
   /** Dismiss stays disabled until the admin copies the temp password. */
   const [tempCredCopied, setTempCredCopied] = useState(false);
-
-  const bootstrapEmail = "admin@mosque.local"; // matches seed default; env may differ server-side
 
   async function refresh(search = q) {
     const query = search.trim()
@@ -189,16 +189,11 @@ export default function AdminUsersPage() {
             <div className="flex flex-wrap gap-2">
               <select
                 value={user.role}
-                disabled={
-                  user.id === selfId ||
-                  (user.role === "ADMIN" &&
-                    user.email.toLowerCase() === bootstrapEmail)
-                }
+                disabled={user.id === selfId || Boolean(user.isBootstrap)}
                 title={
                   user.id === selfId
                     ? "You cannot change your own role"
-                    : user.role === "ADMIN" &&
-                        user.email.toLowerCase() === bootstrapEmail
+                    : user.isBootstrap
                       ? "Bootstrap admin cannot be demoted"
                       : undefined
                 }

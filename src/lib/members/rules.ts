@@ -1,3 +1,7 @@
+/**
+ * Member age and time helpers (minor check, elapsed minutes).
+ */
+
 export function isMinor(dateOfBirth: Date | null | undefined): boolean {
   if (!dateOfBirth) return false;
   const now = new Date();

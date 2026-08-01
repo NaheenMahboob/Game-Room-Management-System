@@ -1,3 +1,9 @@
+/**
+ * `GET /api/admin/audit`
+ *
+ * Filterable audit log feed for administrators (action, user, date range).
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { prisma } from "@/lib/prisma";

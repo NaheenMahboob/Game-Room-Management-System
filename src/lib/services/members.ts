@@ -1,3 +1,7 @@
+/**
+ * Member search, registration, profile updates, and pending approval workflows.
+ */
+
 import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";

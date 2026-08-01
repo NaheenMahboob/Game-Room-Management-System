@@ -1,3 +1,7 @@
+/**
+ * HttpOnly auth cookie names, set/clear helpers, and server cookie readers.
+ */
+
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
 import {

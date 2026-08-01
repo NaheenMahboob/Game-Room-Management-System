@@ -1,3 +1,7 @@
+/**
+ * Route auth wrappers (`withAuth`, `withRole`) that resolve session from cookies.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import type { Role } from "@/generated/prisma";
 import { ACCESS_COOKIE } from "@/lib/auth/cookies";

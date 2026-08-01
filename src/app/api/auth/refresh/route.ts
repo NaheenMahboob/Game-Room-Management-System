@@ -1,3 +1,9 @@
+/**
+ * `POST /api/auth/refresh`
+ *
+ * Rotates access and refresh tokens from the refresh cookie.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {

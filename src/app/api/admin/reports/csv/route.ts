@@ -1,3 +1,9 @@
+/**
+ * `GET /api/admin/reports/csv`
+ *
+ * Exports visits, equipment usage, or member roster as CSV downloads.
+ */
+
 import { withRole } from "@/lib/auth/api";
 import { handleRouteError } from "@/lib/api/http";
 import { getAnalyticsSummary, toCsv } from "@/lib/services/analytics";

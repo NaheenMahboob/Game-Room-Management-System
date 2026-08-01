@@ -1,3 +1,7 @@
+/**
+ * Admin analytics aggregates (visits, loans, equipment, CSV export helpers).
+ */
+
 import { prisma } from "@/lib/prisma";
 
 function startOfDay(d: Date) {
