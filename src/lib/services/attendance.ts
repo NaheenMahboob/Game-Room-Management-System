@@ -7,6 +7,7 @@ import {
   getMaxSessionDuration,
 } from "@/lib/settings";
 import { returnLoansForMember } from "@/lib/services/loans";
+import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 
 /**
  * Counts members and guests currently inside the game room.
@@ -98,7 +99,10 @@ export async function signInMember(
       tx
     );
 
-    return record;
+    return {
+      ...record,
+      member: withClientPhotoUrl(record.member),
+    };
   });
 
   return attendance;
@@ -229,7 +233,13 @@ export async function listAttendance(params: {
       if (durationMinutes >= maxSession + 30) sessionAlert = "overdue";
       else if (durationMinutes >= maxSession) sessionAlert = "warning";
     }
-    return { ...row, durationMinutes, sessionAlert, maxSessionMinutes: maxSession };
+    return {
+      ...row,
+      member: withClientPhotoUrl(row.member),
+      durationMinutes,
+      sessionAlert,
+      maxSessionMinutes: maxSession,
+    };
   });
 }
 

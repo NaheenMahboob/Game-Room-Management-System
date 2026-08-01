@@ -50,3 +50,8 @@ next-env.d.ts
 /public/uploads/members/*
 !/public/uploads/members/.gitkeep
 !/public/uploads/members/placeholder.jpg
+
+# private member photos (outside public/)
+/storage/members/*
+!/storage/members/.gitkeep
+!/storage/members/placeholder.jpg

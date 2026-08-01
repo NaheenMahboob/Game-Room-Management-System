@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";
+import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 
 export async function joinQueue(
   equipmentId: string,
@@ -49,7 +50,10 @@ export async function joinQueue(
     return created;
   });
 
-  return entry;
+  return {
+    ...entry,
+    member: withClientPhotoUrl(entry.member),
+  };
 }
 
 export async function removeFromQueue(
@@ -83,7 +87,7 @@ export async function removeFromQueue(
 }
 
 export async function listQueue(equipmentId?: string) {
-  return prisma.equipmentQueue.findMany({
+  const entries = await prisma.equipmentQueue.findMany({
     where: {
       fulfilled: false,
       equipmentId,
@@ -94,4 +98,9 @@ export async function listQueue(equipmentId?: string) {
     },
     orderBy: [{ equipmentId: "asc" }, { position: "asc" }],
   });
+
+  return entries.map((entry) => ({
+    ...entry,
+    member: withClientPhotoUrl(entry.member),
+  }));
 }

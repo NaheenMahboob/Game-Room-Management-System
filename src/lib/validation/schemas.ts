@@ -1,7 +1,7 @@
 /**
  * Zod request schemas for API route validation.
- * Photo-related schemas require stored `/uploads/members/...` paths and
- * explicit staff photo verification on sign-in.
+ * Registration `photoUrl` must be a private storage filename (uploaded first).
+ * Sign-in requires explicit staff photo verification.
  */
 
 import { z } from "zod";
@@ -25,11 +25,11 @@ export const registerMemberSchema = z.object({
   email: z.string().trim().email().optional().or(z.literal("")),
   emergencyContactName: z.string().trim().min(2).max(120),
   emergencyContactPhone: z.string().trim().min(7).max(30),
-  // Reject raw data URLs — registration must upload first and pass the path.
+  // Storage filename only — never a public URL or data: URL.
   photoUrl: z
     .string()
     .trim()
-    .regex(/^\/uploads\/members\/[\w.-]+$/, "Invalid photo path"),
+    .regex(/^[\w.-]+\.(jpe?g|png|webp)$/i, "Invalid photo filename"),
   dateOfBirth: z.string().optional(),
   waiverSigned: z.literal(true),
   waiverSignature: z.string().trim().min(1),

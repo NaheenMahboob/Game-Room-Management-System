@@ -6,14 +6,21 @@ import { AuditAction } from "@/lib/audit/actions";
 import { generateQrPayload, generateTempPassword } from "@/lib/members/ids";
 import { isMinor } from "@/lib/members/rules";
 import { getCurrentWaiverVersion } from "@/lib/settings";
+import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 import type { z } from "zod";
 import type {
   registerMemberSchema,
   updateMemberSchema,
 } from "@/lib/validation/schemas";
 
+/**
+ * Searches members by name or phone and returns client-safe photo API URLs.
+ *
+ * @param q - Search query
+ * @param limit - Max rows to return
+ */
 export async function searchMembers(q: string, limit = 20) {
-  return prisma.member.findMany({
+  const members = await prisma.member.findMany({
     where: {
       OR: [
         { fullName: { contains: q, mode: "insensitive" } },
@@ -32,10 +39,16 @@ export async function searchMembers(q: string, limit = 20) {
       userId: true,
     },
   });
+  return members.map(withClientPhotoUrl);
 }
 
+/**
+ * Loads a member profile (open attendance + active loans) with a private photo URL.
+ *
+ * @param id - Member cuid
+ */
 export async function getMemberById(id: string) {
-  return prisma.member.findUnique({
+  const member = await prisma.member.findUnique({
     where: { id },
     include: {
       user: { select: { id: true, email: true, role: true } },
@@ -50,10 +63,16 @@ export async function getMemberById(id: string) {
       },
     },
   });
+  return member ? withClientPhotoUrl(member) : null;
 }
 
+/**
+ * Looks up a member by QR payload with a private photo URL for desk display.
+ *
+ * @param qrPayload - Scanned QR value
+ */
 export async function getMemberByQr(qrPayload: string) {
-  return prisma.member.findUnique({
+  const member = await prisma.member.findUnique({
     where: { qrPayload },
     include: {
       user: { select: { id: true, email: true, role: true } },
@@ -68,10 +87,17 @@ export async function getMemberByQr(qrPayload: string) {
       },
     },
   });
+  return member ? withClientPhotoUrl(member) : null;
 }
 
 type RegisterInput = z.infer<typeof registerMemberSchema>;
 
+/**
+ * Creates a member user account, stores the uploaded photo filename, and audits.
+ *
+ * @param input - Validated registration payload (`photoUrl` = storage filename)
+ * @param registeredByUserId - Staff user performing registration
+ */
 export async function registerMember(
   input: RegisterInput,
   registeredByUserId: string
@@ -154,7 +180,7 @@ export async function registerMember(
   );
 
   return {
-    member: result.member,
+    member: withClientPhotoUrl(result.member),
     temporaryPassword: tempPassword,
     loginEmail: email,
   };
@@ -162,6 +188,14 @@ export async function registerMember(
 
 type UpdateInput = z.infer<typeof updateMemberSchema>;
 
+/**
+ * Updates member contact fields (and status when `asAdmin`).
+ *
+ * @param memberId - Target member
+ * @param input - Partial update fields
+ * @param performedByUserId - Actor user id for audit
+ * @param asAdmin - Whether membershipStatus may be changed
+ */
 export async function updateMember(
   memberId: string,
   input: UpdateInput,
@@ -192,5 +226,5 @@ export async function updateMember(
     details: input,
   });
 
-  return member;
+  return withClientPhotoUrl(member);
 }

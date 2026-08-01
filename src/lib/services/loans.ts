@@ -8,6 +8,7 @@ import {
   getSettingBoolean,
 } from "@/lib/settings";
 import { minutesBetween } from "@/lib/members/rules";
+import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -63,7 +64,20 @@ export async function listEquipment(options?: {
 
     return {
       ...item,
-      activeLoan,
+      loans: item.loans.map((loan) => ({
+        ...loan,
+        member: withClientPhotoUrl(loan.member),
+      })),
+      queueEntries: item.queueEntries.map((entry) => ({
+        ...entry,
+        member: withClientPhotoUrl(entry.member),
+      })),
+      activeLoan: activeLoan
+        ? {
+            ...activeLoan,
+            member: withClientPhotoUrl(activeLoan.member),
+          }
+        : null,
       available,
       loanMinutes,
       loanAlert,
@@ -319,6 +333,7 @@ export async function listActiveLoans(memberId?: string) {
     }
     return {
       ...loan,
+      member: withClientPhotoUrl(loan.member),
       durationMinutes: minutes,
       timeLimitMinutes: limit ?? null,
       alert,

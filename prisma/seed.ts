@@ -131,8 +131,8 @@ async function main() {
       email: memberEmail,
       emergencyContactName: "Demo Parent",
       emergencyContactPhone: "555-0101",
-      // Shared placeholder under public/uploads (not a base64 data URL).
-      photoUrl: "/uploads/members/placeholder.jpg",
+      // Private storage filename (served via GET /api/members/[id]/photo).
+      photoUrl: "placeholder.jpg",
       membershipStatus: "ACTIVE",
       waiverSigned: true,
       waiverSignedAt: new Date(),
@@ -147,8 +147,8 @@ async function main() {
       email: memberEmail,
       emergencyContactName: "Demo Parent",
       emergencyContactPhone: "555-0101",
-      // Same placeholder path used on update so re-seed stays consistent.
-      photoUrl: "/uploads/members/placeholder.jpg",
+      // Same storage filename on create so re-seed stays consistent.
+      photoUrl: "placeholder.jpg",
       membershipStatus: "ACTIVE",
       waiverSigned: true,
       waiverSignedAt: new Date(),

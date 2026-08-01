@@ -2,8 +2,8 @@
 
 /**
  * Volunteer desk registration form.
- * Uploads the profile photo to disk first, then creates the member with the
- * returned `/uploads/members/...` path (never a base64 data URL).
+ * Uploads the profile photo to private storage first, then creates the member
+ * with the returned storage filename (never a base64 data URL or public path).
  */
 
 import { FormEvent, useState } from "react";

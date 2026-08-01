@@ -32,22 +32,22 @@ export function dataUrlToFile(dataUrl: string, filename = "photo.jpg"): File {
 
 /** Loose response shape covering both upload endpoints. */
 type UploadResponse = {
-  /** Returned by `POST /api/uploads/member-photo`. */
+  /** Storage filename from `POST /api/uploads/member-photo`. */
   photoUrl?: string;
-  /** Returned by `POST /api/members/[id]/photo`. */
+  /** Updated member from `POST /api/members/[id]/photo` (client API photo path). */
   member?: { photoUrl?: string };
   error?: string;
 };
 
 /**
- * Uploads a `File` via multipart POST and returns the stored public path.
+ * Uploads a `File` via multipart POST and returns the response photo reference.
  *
- * Does not set `Content-Type` manually so the browser can supply the
- * multipart boundary.
+ * Registration returns a storage filename; retake returns the authenticated
+ * API path on `member.photoUrl` (or top-level `photoUrl`).
  *
  * @param file - Image file to upload
  * @param endpoint - Absolute path of the upload API route
- * @returns Public photo path under `/uploads/members/`
+ * @returns Storage filename or `/api/members/.../photo` depending on endpoint
  */
 export async function uploadMemberPhotoFile(
   file: File,
@@ -62,8 +62,6 @@ export async function uploadMemberPhotoFile(
   });
 
   const data = (await response.json().catch(() => ({}))) as UploadResponse;
-
-  // Registration upload returns `{ photoUrl }`; retake returns `{ member }`.
   const photoUrl = data.photoUrl ?? data.member?.photoUrl;
 
   if (!response.ok || !photoUrl) {
@@ -74,18 +72,21 @@ export async function uploadMemberPhotoFile(
 }
 
 /**
- * Uploads a local preview data URL, or passes through an already-stored path.
+ * Uploads a local preview data URL, or passes through an already-stored key/path.
  *
- * @param dataUrl - Camera/file preview (`data:...`) or existing `/uploads/...` path
+ * @param dataUrl - Camera/file preview (`data:...`), storage filename, or API path
  * @param endpoint - Upload API route to POST against when conversion is needed
- * @returns Public path under `/uploads/members/`
+ * @returns Storage filename (registration) or API photo path (retake)
  */
 export async function uploadMemberPhotoDataUrl(
   dataUrl: string,
   endpoint: string
 ): Promise<string> {
-  // Already persisted — no need to re-upload.
-  if (dataUrl.startsWith("/uploads/")) {
+  // Already a storage filename or authenticated API URL — no re-upload.
+  if (
+    dataUrl.startsWith("/api/members/") ||
+    /^[\w.-]+\.(jpe?g|png|webp)$/i.test(dataUrl)
+  ) {
     return dataUrl;
   }
 
