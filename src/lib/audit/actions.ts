@@ -18,6 +18,10 @@ export const AuditAction = {
   MEMBER_APPROVED: "MEMBER_APPROVED",
   /** Staff rejected a PENDING self-registration. */
   MEMBER_REJECTED: "MEMBER_REJECTED",
+  /** Member (or desk register) requested room entry — waiting for staff sign-in. */
+  CHECK_IN_REQUESTED: "CHECK_IN_REQUESTED",
+  /** Member cancelled their waiting check-in request. */
+  CHECK_IN_CANCELLED: "CHECK_IN_CANCELLED",
   SIGN_IN: "SIGN_IN",
   SIGN_OUT: "SIGN_OUT",
   FORCE_SIGN_OUT: "FORCE_SIGN_OUT",

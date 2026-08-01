@@ -97,6 +97,9 @@ model Member {
   approvedByUserId       String?
   approvedBy             User?            @relation("ApprovedBy", fields: [approvedByUserId], references: [id])
   approvedAt             DateTime?
+  // Set when the member taps “I’m here” in the portal (or desk registration).
+  // Staff can only room-sign-in members with this set; cleared on sign-in/cancel.
+  checkInRequestedAt     DateTime?
   createdAt              DateTime         @default(now())
 
   attendances Attendance[]

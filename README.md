@@ -46,8 +46,8 @@ Keep these current when behavior or setup changes.
 ## Features
 
 - **Public status board** — occupancy and per-unit equipment availability for a wall / TV display
-- **Member portal** — self-register, profile + photo, QR membership card, visit/loan history, announcements
-- **Volunteer kiosk** — search/QR sign-in & sign-out, desk registration, borrow/return, guest passes, pending photo approvals, shift checklist
+- **Member portal** — self-register, “I’m here” check-in request, profile + photo, QR membership card, visit/loan history, announcements
+- **Volunteer kiosk** — waiting-to-enter list, QR sign-in & sign-out, desk registration, borrow/return, guest passes, pending photo approvals, shift checklist
 - **Admin suite** — inventory, users, shifts, announcements/events, analytics charts, CSV reports, settings, append-only audit log
 - **RBAC** — MEMBER / VOLUNTEER / ADMIN with middleware and API guards
 - **Offline PWA** — volunteer dashboard queues key actions when Wi‑Fi drops
@@ -166,8 +166,8 @@ Change these passwords before any real deployment.
 |------------|--------|--------|-----------|-------|
 | Status board (`/public`) | yes | yes | yes | yes |
 | Self-register (`/portal/register`) | yes | — | — | — |
-| Own profile / QR / history / announcements | — | yes | yes\* | yes\* |
-| Sign-in/out, loans, desk register, guests, checklist | — | — | yes | yes |
+| Own profile / QR / “I’m here” check-in / history / announcements | — | yes | yes\* | yes\* |
+| Waiting-to-enter list, sign-in/out, loans, desk register, guests, checklist | — | — | yes | yes |
 | Pending member photo approval queue | — | — | yes | yes |
 | Inventory, users, analytics, audit, settings, shifts, content | — | — | — | yes |
 

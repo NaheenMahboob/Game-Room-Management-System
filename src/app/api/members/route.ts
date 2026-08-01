@@ -1,18 +1,26 @@
 /**
  * Member search and desk registration for staff.
- * GET requires `q`; POST registers a member at the volunteer desk.
+ * GET lists/searches the check-in waiting list only (people who requested entry).
+ * POST registers a member at the volunteer desk (auto-adds to waiting list).
  */
 
 import { withRole } from "@/lib/auth/api";
-import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
+import { jsonOk, handleRouteError } from "@/lib/api/http";
 import {
   memberSearchSchema,
   registerMemberSchema,
 } from "@/lib/validation/schemas";
-import { registerMember, searchMembers } from "@/lib/services/members";
+import { registerMember } from "@/lib/services/members";
+import {
+  listWaitingForCheckIn,
+  searchWaitingForCheckIn,
+} from "@/lib/services/checkIn";
 import { deleteOrphanRegistrationPhoto } from "@/lib/uploads/memberPhoto";
 
-/** Searches members by query string (`q` required). */
+/**
+ * Desk identify: without `q`, returns everyone waiting to be let in;
+ * with `q`, searches only within that waiting list.
+ */
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   try {
     const { searchParams } = new URL(request.url);
@@ -20,10 +28,9 @@ export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
       q: searchParams.get("q") ?? undefined,
       limit: searchParams.get("limit") ?? undefined,
     });
-    if (!parsed.q) {
-      return jsonError("Query parameter q is required", 400);
-    }
-    const members = await searchMembers(parsed.q, parsed.limit ?? 20);
+    const members = parsed.q
+      ? await searchWaitingForCheckIn(parsed.q, parsed.limit ?? 20)
+      : await listWaitingForCheckIn();
     return jsonOk({ members });
   } catch (error) {
     return handleRouteError(error);
@@ -32,6 +39,7 @@ export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
 
 /**
  * Desk registration. Cleans up the prior `reg-*` photo upload if create fails.
+ * New members are placed on the check-in waiting list automatically.
  */
 export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
   let uploadedPhotoUrl: string | undefined;

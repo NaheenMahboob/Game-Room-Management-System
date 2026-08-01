@@ -1,5 +1,8 @@
 /**
  * Sign-in/out, occupancy, and attendance listing business logic.
+ *
+ * Room sign-in requires an open check-in request (`Member.checkInRequestedAt`)
+ * so the desk Members tab only lets in people who asked to be signed in.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -35,15 +38,16 @@ export async function getOccupancy() {
 /**
  * Signs a member into the room after staff photo verification.
  *
- * Enforces active membership, current waiver, parental consent for minors,
- * and a single open attendance session. Persists `photoVerified: true` on
- * the SIGN_IN audit entry.
+ * Requires an open check-in request from the member (portal “I’m here” or
+ * desk registration). Enforces active membership, current waiver, parental
+ * consent for minors, and a single open attendance session. Clears the
+ * check-in request and persists `photoVerified: true` on the SIGN_IN audit.
  *
  * @param memberId - Member to sign in
  * @param performedByUserId - Staff user performing the action
  * @param photoVerified - Must be `true`; staff confirmed the stored photo matches
  * @returns Newly created attendance row (includes member photo for UI)
- * @throws If verification is missing or business rules fail
+ * @throws If verification is missing, no check-in request, or business rules fail
  */
 export async function signInMember(
   memberId: string,
@@ -87,6 +91,13 @@ export async function signInMember(
     throw new Error("Member is already signed in");
   }
 
+  // Desk sign-in only for people who asked to be let in (portal or desk register).
+  if (!member.checkInRequestedAt) {
+    throw new Error(
+      "Member has not requested check-in yet. Ask them to tap “I’m here” in the portal."
+    );
+  }
+
   const attendance = await prisma.$transaction(async (tx) => {
     const record = await tx.attendance.create({
       data: {
@@ -96,6 +107,12 @@ export async function signInMember(
       include: {
         member: { select: { id: true, fullName: true, photoUrl: true } },
       },
+    });
+
+    // Clear waiting flag — they are now inside.
+    await tx.member.update({
+      where: { id: memberId },
+      data: { checkInRequestedAt: null },
     });
 
     await writeAuditLog(

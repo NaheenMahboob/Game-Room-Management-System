@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Member portal profile: contact edits, QR card, and self-service photo update.
+ * Member portal profile: contact edits, QR card, self-service photo update,
+ * and “I’m here” check-in request for the volunteer waiting list.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +24,8 @@ type Member = {
   pendingPhotoUrl?: string | null;
   qrPayload: string;
   membershipStatus: string;
+  checkInRequestedAt?: string | null;
+  attendances?: { id: string }[];
 };
 
 type PortalProfileClientProps = {
@@ -31,7 +34,7 @@ type PortalProfileClientProps = {
 };
 
 /**
- * Renders the logged-in member's profile with photo retake and contact save.
+ * Renders the logged-in member's profile with check-in, photo retake, and contact save.
  *
  * @param props - Contains the current member id
  */
@@ -43,6 +46,8 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
   /** Local preview before multipart upload to `/api/members/[id]/photo`. */
   const [photoDraft, setPhotoDraft] = useState<string | null>(null);
   const [savingPhoto, setSavingPhoto] = useState(false);
+  /** True while posting/cancelling the desk waiting-list request. */
+  const [checkInBusy, setCheckInBusy] = useState(false);
   const [form, setForm] = useState({
     phone: "",
     email: "",
@@ -51,21 +56,25 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
   });
   const qrWrapRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Reloads the member profile from the API into local state.
+   */
+  async function refreshMember() {
+    const data = await apiFetch<{ member: Member }>(`/api/members/${memberId}`);
+    setMember(data.member);
+    setForm({
+      phone: data.member.phone,
+      email: data.member.email ?? "",
+      emergencyContactName: data.member.emergencyContactName,
+      emergencyContactPhone: data.member.emergencyContactPhone,
+    });
+  }
+
   useEffect(() => {
-    apiFetch<{ member: Member }>(`/api/members/${memberId}`)
-      .then((data) => {
-        setMember(data.member);
-        // Seed the editable form from the latest server values.
-        setForm({
-          phone: data.member.phone,
-          email: data.member.email ?? "",
-          emergencyContactName: data.member.emergencyContactName,
-          emergencyContactPhone: data.member.emergencyContactPhone,
-        });
-      })
-      .catch((err) =>
-        toast.push(err instanceof Error ? err.message : "Load failed", "error")
-      );
+    refreshMember().catch((err) =>
+      toast.push(err instanceof Error ? err.message : "Load failed", "error")
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per memberId
   }, [memberId, toast]);
 
   /**
@@ -101,10 +110,7 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
         photoDraft,
         `/api/members/${memberId}/photo`
       );
-      const refreshed = await apiFetch<{ member: Member }>(
-        `/api/members/${memberId}`
-      );
-      setMember(refreshed.member);
+      await refreshMember();
       toast.push(
         "Photo submitted for staff approval. Your current photo stays until approved."
       );
@@ -114,6 +120,41 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
       toast.push(err instanceof Error ? err.message : "Photo update failed", "error");
     } finally {
       setSavingPhoto(false);
+    }
+  }
+
+  /**
+   * Places this member on the volunteer “waiting to enter” list.
+   */
+  async function requestCheckIn() {
+    setCheckInBusy(true);
+    try {
+      await apiFetch("/api/attendance/check-in-request", { method: "POST" });
+      await refreshMember();
+      toast.push("You’re on the waiting list — a volunteer will let you in");
+    } catch (err) {
+      toast.push(
+        err instanceof Error ? err.message : "Could not request check-in",
+        "error"
+      );
+    } finally {
+      setCheckInBusy(false);
+    }
+  }
+
+  /**
+   * Removes this member from the waiting list.
+   */
+  async function cancelCheckIn() {
+    setCheckInBusy(true);
+    try {
+      await apiFetch("/api/attendance/check-in-request", { method: "DELETE" });
+      await refreshMember();
+      toast.push("Check-in request cancelled");
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : "Could not cancel", "error");
+    } finally {
+      setCheckInBusy(false);
     }
   }
 
@@ -133,6 +174,11 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
   if (!member) {
     return <p className="text-slate-400">Loading profile…</p>;
   }
+
+  const isInside = (member.attendances?.length ?? 0) > 0;
+  const isWaiting = Boolean(member.checkInRequestedAt) && !isInside;
+  const canRequestCheckIn =
+    member.membershipStatus === "ACTIVE" && !isInside && !isWaiting;
 
   return (
     <div className="space-y-6">
@@ -164,6 +210,54 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
           </button>
         </div>
       </div>
+
+      {/* Room entry: member must request before staff can sign them in. */}
+      <section className="space-y-3 rounded-2xl border border-emerald-500/30 bg-slate-900/60 p-5">
+        <h2 className="text-lg font-semibold">Game room check-in</h2>
+        {isInside ? (
+          <p className="text-sm text-emerald-300">
+            You are signed in to the room. Ask a volunteer when you are ready to
+            leave.
+          </p>
+        ) : null}
+        {isWaiting ? (
+          <>
+            <p className="text-sm text-amber-200">
+              You’re on the waiting list. Show your QR or photo to a volunteer so
+              they can let you in.
+            </p>
+            <button
+              type="button"
+              disabled={checkInBusy}
+              onClick={cancelCheckIn}
+              className="min-h-11 rounded-xl bg-slate-700 px-5 font-semibold disabled:opacity-60"
+            >
+              {checkInBusy ? "Updating…" : "Cancel — I’m not ready"}
+            </button>
+          </>
+        ) : null}
+        {canRequestCheckIn ? (
+          <>
+            <p className="text-sm text-slate-400">
+              When you arrive at the game room, tap below so volunteers know you
+              are waiting to be let in.
+            </p>
+            <button
+              type="button"
+              disabled={checkInBusy}
+              onClick={requestCheckIn}
+              className="min-h-12 rounded-xl bg-emerald-600 px-5 font-semibold disabled:opacity-60"
+            >
+              {checkInBusy ? "Requesting…" : "I’m here — request check-in"}
+            </button>
+          </>
+        ) : null}
+        {member.membershipStatus === "PENDING" ? (
+          <p className="text-sm text-amber-200">
+            Your registration is still awaiting photo verification.
+          </p>
+        ) : null}
+      </section>
 
       {updatingPhoto ? (
         <section className="space-y-3 rounded-2xl border border-slate-700 bg-slate-900/60 p-5">

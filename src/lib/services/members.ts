@@ -24,6 +24,9 @@ import type {
 /**
  * Searches members by name or phone and returns client-safe photo API URLs.
  *
+ * Desk “let them in” search should use {@link searchWaitingForCheckIn} instead
+ * so only people who requested check-in appear.
+ *
  * @param q - Search query
  * @param limit - Max rows to return
  */
@@ -45,6 +48,7 @@ export async function searchMembers(q: string, limit = 20) {
       pendingPhotoUrl: true,
       membershipStatus: true,
       qrPayload: true,
+      checkInRequestedAt: true,
       userId: true,
     },
   });
@@ -175,6 +179,8 @@ export async function registerMember(
           registeredByUserId,
           approvedByUserId: registeredByUserId,
           approvedAt: new Date(),
+          // Walk-up desk register: place them on the waiting list immediately.
+          checkInRequestedAt: new Date(),
         },
       });
 
