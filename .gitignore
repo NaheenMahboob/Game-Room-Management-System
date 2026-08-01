@@ -45,3 +45,8 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# member photo uploads (keep folder + placeholder)
+/public/uploads/members/*
+!/public/uploads/members/.gitkeep
+!/public/uploads/members/placeholder.jpg

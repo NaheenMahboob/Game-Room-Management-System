@@ -8,6 +8,11 @@ import {
 } from "@/lib/settings";
 import { returnLoansForMember } from "@/lib/services/loans";
 
+/**
+ * Counts members and guests currently inside the game room.
+ *
+ * @returns Occupancy breakdown used by the dashboard home and public board
+ */
 export async function getOccupancy() {
   const [activeAttendances, activeGuests] = await Promise.all([
     prisma.attendance.count({ where: { signOutTime: null } }),
@@ -22,10 +27,29 @@ export async function getOccupancy() {
   };
 }
 
+/**
+ * Signs a member into the room after staff photo verification.
+ *
+ * Enforces active membership, current waiver, parental consent for minors,
+ * and a single open attendance session. Persists `photoVerified: true` on
+ * the SIGN_IN audit entry.
+ *
+ * @param memberId - Member to sign in
+ * @param performedByUserId - Staff user performing the action
+ * @param photoVerified - Must be `true`; staff confirmed the stored photo matches
+ * @returns Newly created attendance row (includes member photo for UI)
+ * @throws If verification is missing or business rules fail
+ */
 export async function signInMember(
   memberId: string,
-  performedByUserId: string
+  performedByUserId: string,
+  photoVerified: boolean
 ) {
+  // Desk UI must send an explicit confirmation — never infer it server-side.
+  if (!photoVerified) {
+    throw new Error("Photo verification is required before signing in");
+  }
+
   const member = await prisma.member.findUnique({ where: { id: memberId } });
   if (!member) throw new Error("Member not found");
   if (member.membershipStatus !== "ACTIVE") {
@@ -45,6 +69,7 @@ export async function signInMember(
     );
   }
 
+  // One open session per member.
   const alreadyIn = await prisma.attendance.findFirst({
     where: { memberId, signOutTime: null },
   });
@@ -58,7 +83,9 @@ export async function signInMember(
         memberId,
         signedInByUserId: performedByUserId,
       },
-      include: { member: { select: { id: true, fullName: true, photoUrl: true } } },
+      include: {
+        member: { select: { id: true, fullName: true, photoUrl: true } },
+      },
     });
 
     await writeAuditLog(
@@ -66,7 +93,7 @@ export async function signInMember(
         actionType: AuditAction.SIGN_IN,
         performedByUserId,
         memberId,
-        details: { attendanceId: record.id },
+        details: { attendanceId: record.id, photoVerified: true },
       },
       tx
     );
@@ -77,6 +104,15 @@ export async function signInMember(
   return attendance;
 }
 
+
+/**
+ * Signs a member out of the room, optionally forcing equipment returns.
+ *
+ * @param memberId - Member with an open attendance session
+ * @param performedByUserId - Staff user performing the action
+ * @param forceReturnEquipment - When true, auto-return outstanding loans
+ * @returns Result object that may include `needsConfirmation` if loans remain
+ */
 export async function signOutMember(
   memberId: string,
   performedByUserId: string,

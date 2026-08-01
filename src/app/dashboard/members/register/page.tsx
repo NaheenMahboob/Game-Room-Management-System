@@ -1,17 +1,28 @@
 "use client";
 
+/**
+ * Volunteer desk registration form.
+ * Uploads the profile photo to disk first, then creates the member with the
+ * returned `/uploads/members/...` path (never a base64 data URL).
+ */
+
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api/client";
+import { uploadMemberPhotoDataUrl } from "@/lib/uploads/client";
 import { useToast } from "@/components/ui/Toast";
 import { PhotoCapture } from "@/components/dashboard/PhotoCapture";
 import { SignaturePad } from "@/components/dashboard/SignaturePad";
 
+/**
+ * Multi-step registration UI: details → photo → waiver → submit.
+ */
 export default function RegisterMemberPage() {
   const toast = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  /** Local camera/file preview (`data:` URL) before server upload. */
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [signature, setSignature] = useState("");
   const [form, setForm] = useState({
     fullName: "",
@@ -23,9 +34,14 @@ export default function RegisterMemberPage() {
     parentalConsent: false,
   });
 
+  /**
+   * Uploads the photo, then POSTs member registration with the stored path.
+   *
+   * @param e - Form submit event
+   */
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!photoUrl) {
+    if (!photoPreview) {
       toast.push("Profile photo is required", "error");
       return;
     }
@@ -36,6 +52,12 @@ export default function RegisterMemberPage() {
 
     setLoading(true);
     try {
+      // Persist the image first so registerMemberSchema receives a path.
+      const photoUrl = await uploadMemberPhotoDataUrl(
+        photoPreview,
+        "/api/uploads/member-photo"
+      );
+
       const result = await apiFetch<{
         member: { id: string; fullName: string };
         temporaryPassword: string;
@@ -63,6 +85,14 @@ export default function RegisterMemberPage() {
     }
   }
 
+  /**
+   * Renders a labeled input bound to a `form` field key.
+   *
+   * @param key - Form state key
+   * @param label - Visible label text
+   * @param type - HTML input type
+   * @param required - Whether the field is required
+   */
   function field(
     key: keyof typeof form,
     label: string,
@@ -104,7 +134,7 @@ export default function RegisterMemberPage() {
         {field("emergencyContactPhone", "Emergency contact phone *", "tel")}
       </div>
 
-      <PhotoCapture value={photoUrl} onChange={setPhotoUrl} />
+      <PhotoCapture value={photoPreview} onChange={setPhotoPreview} />
       <SignaturePad onChange={setSignature} />
 
       <label className="flex min-h-12 items-center gap-3">

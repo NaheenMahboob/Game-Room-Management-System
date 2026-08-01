@@ -1,10 +1,17 @@
 "use client";
 
+/**
+ * Member portal profile: contact edits, QR card, and self-service photo update.
+ */
+
 import { useEffect, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { apiFetch } from "@/lib/api/client";
+import { uploadMemberPhotoDataUrl } from "@/lib/uploads/client";
 import { useToast } from "@/components/ui/Toast";
+import { PhotoCapture } from "@/components/dashboard/PhotoCapture";
 
+/** Subset of member fields shown and editable in the portal. */
 type Member = {
   id: string;
   fullName: string;
@@ -17,10 +24,24 @@ type Member = {
   membershipStatus: string;
 };
 
-export function PortalProfileClient({ memberId }: { memberId: string }) {
+type PortalProfileClientProps = {
+  /** Authenticated member's id (from the portal session). */
+  memberId: string;
+};
+
+/**
+ * Renders the logged-in member's profile with photo retake and contact save.
+ *
+ * @param props - Contains the current member id
+ */
+export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
   const toast = useToast();
   const [member, setMember] = useState<Member | null>(null);
   const [saving, setSaving] = useState(false);
+  const [updatingPhoto, setUpdatingPhoto] = useState(false);
+  /** Local preview before multipart upload to `/api/members/[id]/photo`. */
+  const [photoDraft, setPhotoDraft] = useState<string | null>(null);
+  const [savingPhoto, setSavingPhoto] = useState(false);
   const [form, setForm] = useState({
     phone: "",
     email: "",
@@ -33,6 +54,7 @@ export function PortalProfileClient({ memberId }: { memberId: string }) {
     apiFetch<{ member: Member }>(`/api/members/${memberId}`)
       .then((data) => {
         setMember(data.member);
+        // Seed the editable form from the latest server values.
         setForm({
           phone: data.member.phone,
           email: data.member.email ?? "",
@@ -45,6 +67,9 @@ export function PortalProfileClient({ memberId }: { memberId: string }) {
       );
   }, [memberId, toast]);
 
+  /**
+   * Persists contact fields via `PATCH /api/members/[id]`.
+   */
   async function save() {
     setSaving(true);
     try {
@@ -64,6 +89,31 @@ export function PortalProfileClient({ memberId }: { memberId: string }) {
     }
   }
 
+  /**
+   * Uploads the draft photo for this member (self-service).
+   */
+  async function savePhoto() {
+    if (!photoDraft) return;
+    setSavingPhoto(true);
+    try {
+      const photoUrl = await uploadMemberPhotoDataUrl(
+        photoDraft,
+        `/api/members/${memberId}/photo`
+      );
+      setMember((m) => (m ? { ...m, photoUrl } : m));
+      toast.push("Photo updated");
+      setUpdatingPhoto(false);
+      setPhotoDraft(null);
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : "Photo update failed", "error");
+    } finally {
+      setSavingPhoto(false);
+    }
+  }
+
+  /**
+   * Downloads the QR canvas as a PNG named after the member.
+   */
   function downloadQr() {
     const canvas = qrWrapRef.current?.querySelector("canvas");
     if (!canvas) return;
@@ -90,8 +140,32 @@ export function PortalProfileClient({ memberId }: { memberId: string }) {
         <div>
           <h1 className="text-3xl font-semibold">{member.fullName}</h1>
           <p className="text-slate-400">{member.membershipStatus}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setUpdatingPhoto((v) => !v);
+              setPhotoDraft(null);
+            }}
+            className="mt-2 min-h-10 rounded-xl bg-slate-700 px-3 text-sm font-semibold"
+          >
+            {updatingPhoto ? "Cancel" : "Update photo"}
+          </button>
         </div>
       </div>
+
+      {updatingPhoto ? (
+        <section className="space-y-3 rounded-2xl border border-slate-700 bg-slate-900/60 p-5">
+          <PhotoCapture value={photoDraft} onChange={setPhotoDraft} />
+          <button
+            type="button"
+            disabled={!photoDraft || savingPhoto}
+            onClick={savePhoto}
+            className="min-h-11 rounded-xl bg-emerald-600 px-5 font-semibold disabled:opacity-60"
+          >
+            {savingPhoto ? "Uploading…" : "Save new photo"}
+          </button>
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-slate-700 bg-slate-900/60 p-5">
         <h2 className="mb-3 text-lg font-semibold">Member QR card</h2>

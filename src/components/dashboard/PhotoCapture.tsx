@@ -1,24 +1,42 @@
 "use client";
 
+/**
+ * Webcam / file picker used during registration and photo retake flows.
+ * Emits a local `data:` URL preview; callers upload via
+ * {@link uploadMemberPhotoDataUrl} before persisting a member record.
+ */
+
 import { useEffect, useRef, useState } from "react";
 
 type PhotoCaptureProps = {
+  /** Current preview (`data:` URL) or `null` when empty. */
   value: string | null;
+  /** Called with a JPEG/PNG data URL after capture or file select. */
   onChange: (dataUrl: string) => void;
 };
 
+/**
+ * Tablet-friendly photo capture control with camera and file fallbacks.
+ *
+ * @param props - Controlled preview value and change handler
+ */
 export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
+  /** Live MediaStream — stopped on capture, unmount, or cancel. */
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     return () => {
+      // Release the camera when the component unmounts.
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
 
+  /**
+   * Requests front-facing camera access and starts the preview video.
+   */
   async function startCamera() {
     try {
       setError(null);
@@ -37,20 +55,32 @@ export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
     }
   }
 
+  /**
+   * Snapshots the current video frame to a JPEG data URL and stops the stream.
+   */
   function capture() {
     const video = videoRef.current;
     if (!video) return;
+
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // 0.85 quality balances size vs clarity for desk verification.
     onChange(canvas.toDataURL("image/jpeg", 0.85));
+
     streamRef.current?.getTracks().forEach((t) => t.stop());
     setStreaming(false);
   }
 
+  /**
+   * Reads a picked image file into a data URL for the same preview path.
+   *
+   * @param file - Selected image, or `null` if the picker was cancelled
+   */
   function onFile(file: File | null) {
     if (!file) return;
     const reader = new FileReader();

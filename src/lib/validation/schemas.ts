@@ -1,3 +1,9 @@
+/**
+ * Zod request schemas for API route validation.
+ * Photo-related schemas require stored `/uploads/members/...` paths and
+ * explicit staff photo verification on sign-in.
+ */
+
 import { z } from "zod";
 
 const conditionStatusEnum = z.enum(["GOOD", "MINOR_ISSUE", "OUT_OF_ORDER"]);
@@ -12,24 +18,31 @@ const equipmentTypeEnum = z.enum([
   "AIR_HOCKEY",
 ]);
 
+/** Body for `POST /api/members` after the photo has been uploaded to disk. */
 export const registerMemberSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
   phone: z.string().trim().min(7).max(30),
   email: z.string().trim().email().optional().or(z.literal("")),
   emergencyContactName: z.string().trim().min(2).max(120),
   emergencyContactPhone: z.string().trim().min(7).max(30),
-  photoUrl: z.string().trim().min(1),
+  // Reject raw data URLs — registration must upload first and pass the path.
+  photoUrl: z
+    .string()
+    .trim()
+    .regex(/^\/uploads\/members\/[\w.-]+$/, "Invalid photo path"),
   dateOfBirth: z.string().optional(),
   waiverSigned: z.literal(true),
   waiverSignature: z.string().trim().min(1),
   parentalConsent: z.boolean().default(false),
 });
 
+/** Query params for member search. */
 export const memberSearchSchema = z.object({
   q: z.string().trim().min(1).max(100).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 
+/** Partial profile update (photo changes use the dedicated photo endpoint). */
 export const updateMemberSchema = z.object({
   phone: z.string().trim().min(7).max(30).optional(),
   email: z.string().trim().email().optional().or(z.literal("")).optional(),
@@ -38,8 +51,13 @@ export const updateMemberSchema = z.object({
   membershipStatus: z.enum(["ACTIVE", "INACTIVE"]).optional(),
 });
 
+/**
+ * Body for `POST /api/attendance/sign-in`.
+ * `photoVerified` must be the literal `true` — staff confirmed the desk photo.
+ */
 export const signInSchema = z.object({
   memberId: z.string().cuid(),
+  photoVerified: z.literal(true),
 });
 
 export const signOutSchema = z.object({
