@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/generated/prisma";
 import { getJwtSecret } from "@/lib/env";
 
 export const ACCESS_TOKEN_TTL = "1h";

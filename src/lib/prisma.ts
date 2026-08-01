@@ -1,5 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@/generated/prisma";
 
+/** Shared Prisma client (hot-reload safe in development). */
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };

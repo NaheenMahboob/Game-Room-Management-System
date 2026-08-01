@@ -3,7 +3,7 @@
  * Staff who were promoted from members keep a Member row and may use the portal.
  */
 
-import type { Role } from "@prisma/client";
+import type { Role } from "@/generated/prisma";
 
 type SessionLike = {
   role: Role | string;

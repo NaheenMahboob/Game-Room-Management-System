@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
 import { writeAuditLog } from "@/lib/audit/log";
@@ -371,7 +371,8 @@ export async function rejectMemberRegistration(
 }
 
 /**
- * Lists ACTIVE members who submitted a self-service photo retake.
+ * Lists members with a self-service photo retake awaiting staff review
+ * (`pendingPhotoUrl` is set).
  */
 export async function listPendingPhotoRetakes() {
   const members = await prisma.member.findMany({

@@ -1,4 +1,4 @@
-import type { Role } from "@prisma/client";
+import type { Role } from "@/generated/prisma";
 import { getAccessTokenFromCookies } from "@/lib/auth/cookies";
 import { verifyAccessToken, type SessionPayload } from "@/lib/auth/jwt";
 import { prisma } from "@/lib/prisma";

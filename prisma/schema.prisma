@@ -3,6 +3,8 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Project-local output so the IDE always picks up regenerated Member fields.
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
