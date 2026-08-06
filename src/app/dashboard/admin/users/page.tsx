@@ -4,12 +4,22 @@
  * Admin users page: search existing accounts and change roles / reset passwords.
  * Does not create users from a bare email.
  * Password-reset temp credentials stay on screen until Copy succeeds, then Dismiss.
+ * Only the bootstrap admin may change another ADMIN's role.
+ * User results render inside a scroll panel so the page does not grow unboundedly.
+ *
+ * @author Muhammad Naheen Mahboob
  */
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/Toast";
+import { ScrollPanel } from "@/components/ui/ScrollPanel";
 
+/**
+ * User row from `GET /api/admin/users`.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 type User = {
   id: string;
   email: string;
@@ -25,11 +35,18 @@ type User = {
   } | null;
 };
 
+/**
+ * Admin UI for role changes and password resets.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 export default function AdminUsersPage() {
   const toast = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [q, setQ] = useState("");
   const [selfId, setSelfId] = useState<string | null>(null);
+  // From /me or users GET — gates editing other ADMIN role selects.
+  const [viewerIsBootstrap, setViewerIsBootstrap] = useState(false);
   const [tempCred, setTempCred] = useState<{
     email: string;
     password: string;
@@ -37,17 +54,33 @@ export default function AdminUsersPage() {
   /** Dismiss stays disabled until the admin copies the temp password. */
   const [tempCredCopied, setTempCredCopied] = useState(false);
 
+  /**
+   * Loads / searches the user list and refreshes bootstrap viewer flag.
+   *
+   * @author Muhammad Naheen Mahboob
+   */
   async function refresh(search = q) {
     const query = search.trim()
       ? `?q=${encodeURIComponent(search.trim())}`
       : "";
-    const data = await apiFetch<{ users: User[] }>(`/api/admin/users${query}`);
+    const data = await apiFetch<{
+      users: User[];
+      viewerIsBootstrap?: boolean;
+    }>(`/api/admin/users${query}`);
     setUsers(data.users);
+    if (typeof data.viewerIsBootstrap === "boolean") {
+      setViewerIsBootstrap(data.viewerIsBootstrap);
+    }
   }
 
   useEffect(() => {
-    apiFetch<{ user: { id: string } }>("/api/auth/me")
-      .then((d) => setSelfId(d.user.id))
+    apiFetch<{ user: { id: string; isBootstrap?: boolean } }>("/api/auth/me")
+      .then((d) => {
+        setSelfId(d.user.id);
+        if (typeof d.user.isBootstrap === "boolean") {
+          setViewerIsBootstrap(d.user.isBootstrap);
+        }
+      })
       .catch(() => undefined);
     refresh("").catch((err) =>
       toast.push(err instanceof Error ? err.message : "Load failed", "error")
@@ -55,6 +88,11 @@ export default function AdminUsersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
 
+  /**
+   * PATCHes role or password reset; shows temp credentials when reset.
+   *
+   * @author Muhammad Naheen Mahboob
+   */
   async function updateUser(id: string, body: Record<string, unknown>) {
     try {
       const data = await apiFetch<{
@@ -65,6 +103,7 @@ export default function AdminUsersPage() {
         body: JSON.stringify(body),
       });
       if (data.temporaryPassword) {
+        // Keep on screen until Copy + Dismiss so staff can hand off credentials.
         setTempCred({
           email: data.user.email,
           password: data.temporaryPassword,
@@ -80,6 +119,11 @@ export default function AdminUsersPage() {
     }
   }
 
+  /**
+   * Copies temp credentials; on clipboard failure, confirm to unlock Dismiss.
+   *
+   * @author Muhammad Naheen Mahboob
+   */
   async function copyTempCred() {
     if (!tempCred) return;
     try {
@@ -112,7 +156,9 @@ export default function AdminUsersPage() {
         Search for an existing account, then change its role or reset its
         password. Promoted volunteers/admins keep their member profile and can
         still use the member portal. You cannot change your own role or demote
-        the bootstrap admin.
+        the bootstrap admin. Only the bootstrap admin can change another
+        admin&apos;s role; other admins may manage members/volunteers and promote
+        to admin.
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -170,51 +216,59 @@ export default function AdminUsersPage() {
         </div>
       ) : null}
 
-      <ul className="space-y-2">
-        {users.map((user) => (
-          <li
-            key={user.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-3"
-          >
-            <div>
-              <p className="font-semibold">{user.email}</p>
-              <p className="text-sm text-slate-400">
-                {user.role}
-                {user.member
-                  ? ` · ${user.member.fullName} (${user.member.membershipStatus})`
-                  : ""}
-                {user.mustChangePassword ? " · must change password" : ""}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <select
-                value={user.role}
-                disabled={user.id === selfId || Boolean(user.isBootstrap)}
-                title={
-                  user.id === selfId
-                    ? "You cannot change your own role"
-                    : user.isBootstrap
-                      ? "Bootstrap admin cannot be demoted"
-                      : undefined
-                }
-                onChange={(e) => updateUser(user.id, { role: e.target.value })}
-                className="min-h-11 rounded-xl border border-slate-600 bg-slate-950 px-2 text-sm disabled:opacity-50"
-              >
-                <option value="MEMBER">MEMBER</option>
-                <option value="VOLUNTEER">VOLUNTEER</option>
-                <option value="ADMIN">ADMIN</option>
-              </select>
-              <button
-                type="button"
-                onClick={() => updateUser(user.id, { resetPassword: true })}
-                className="min-h-11 rounded-xl bg-slate-700 px-3 text-sm font-semibold"
-              >
-                Reset password
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <ScrollPanel label="Admin users list">
+        <ul className="space-y-2">
+          {users.map((user) => (
+            <li
+              key={user.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-3"
+            >
+              <div>
+                <p className="font-semibold">{user.email}</p>
+                <p className="text-sm text-slate-400">
+                  {user.role}
+                  {user.member
+                    ? ` · ${user.member.fullName} (${user.member.membershipStatus})`
+                    : ""}
+                  {user.mustChangePassword ? " · must change password" : ""}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <select
+                  value={user.role}
+                  disabled={
+                    user.id === selfId ||
+                    Boolean(user.isBootstrap) ||
+                    (user.role === "ADMIN" && !viewerIsBootstrap)
+                  }
+                  title={
+                    user.id === selfId
+                      ? "You cannot change your own role"
+                      : user.isBootstrap
+                        ? "Bootstrap admin cannot be demoted"
+                        : user.role === "ADMIN" && !viewerIsBootstrap
+                          ? "Only the bootstrap admin can change another admin's role"
+                          : undefined
+                  }
+                  onChange={(e) => updateUser(user.id, { role: e.target.value })}
+                  className="min-h-11 rounded-xl border border-slate-600 bg-slate-950 px-2 text-sm disabled:opacity-50"
+                >
+                  <option value="MEMBER">MEMBER</option>
+                  <option value="VOLUNTEER">VOLUNTEER</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => updateUser(user.id, { resetPassword: true })}
+                  className="min-h-11 rounded-xl bg-slate-700 px-3 text-sm font-semibold"
+                >
+                  Reset password
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </ScrollPanel>
     </div>
   );
 }

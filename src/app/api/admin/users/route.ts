@@ -2,6 +2,9 @@
  * Admin user management API.
  * GET supports optional `q` search. PATCH updates role or flags password reset.
  * Creating users by email alone is not supported — promote existing accounts.
+ * Only the bootstrap admin (`ADMIN_EMAIL`) may change another ADMIN's role.
+ *
+ * @author Muhammad Naheen Mahboob
  */
 
 import { z } from "zod";
@@ -12,24 +15,23 @@ import { hashPassword } from "@/lib/auth/password";
 import { writeAuditLog } from "@/lib/audit/log";
 import { generateTempPassword } from "@/lib/members/ids";
 import { clearLoginRateLimitsForEmail } from "@/lib/auth/rateLimit";
+import { isBootstrapAdminEmail } from "@/lib/auth/bootstrap";
 
-/** PATCH body for role change and/or password reset. */
+/**
+ * PATCH body for role change and/or password reset.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 const updateUserSchema = z.object({
   role: z.enum(["MEMBER", "VOLUNTEER", "ADMIN"]).optional(),
   resetPassword: z.boolean().optional(),
 });
 
-/** Normalized bootstrap admin email from env (default seed address). */
-function bootstrapAdminEmail(): string {
-  return (process.env.ADMIN_EMAIL ?? "admin@mosque.local").toLowerCase();
-}
-
-/** True when this email is the seeded / env bootstrap admin account. */
-function isBootstrapAdminEmail(email: string): boolean {
-  return email.toLowerCase() === bootstrapAdminEmail();
-}
-
-/** Prisma select shape for admin user list and PATCH responses. */
+/**
+ * Prisma select shape for admin user list and PATCH responses.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 const userSelect = {
   id: true,
   email: true,
@@ -39,7 +41,11 @@ const userSelect = {
   member: { select: { id: true, fullName: true, membershipStatus: true } },
 } as const;
 
-/** User row shape returned from admin user list/PATCH queries. */
+/**
+ * User row shape returned from admin user list/PATCH queries.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 type UserRow = {
   id: string;
   email: string;
@@ -53,7 +59,11 @@ type UserRow = {
   } | null;
 };
 
-/** Adds `isBootstrap` so the admin UI can disable demotion without hardcoding the email. */
+/**
+ * Adds `isBootstrap` so the admin UI can disable demotion without hardcoding the email.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 function withBootstrapFlag<T extends UserRow>(user: T) {
   return {
     ...user,
@@ -64,9 +74,10 @@ function withBootstrapFlag<T extends UserRow>(user: T) {
 /**
  * Lists or searches existing users for role/password management.
  *
- * @returns `{ users }` matching optional `q` (email or member name)
+ * @returns `{ users, viewerIsBootstrap }` matching optional `q` (email or member name)
+ * @author Muhammad Naheen Mahboob
  */
-export const GET = withRole(["ADMIN"], async ({ request }) => {
+export const GET = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
     const users = await prisma.user.findMany({
@@ -83,10 +94,14 @@ export const GET = withRole(["ADMIN"], async ({ request }) => {
           }
         : undefined,
       orderBy: { createdAt: "desc" },
+      // Narrower take when searching; broader default list for empty query.
       take: q ? 50 : 100,
       select: userSelect,
     });
-    return jsonOk({ users: users.map(withBootstrapFlag) });
+    return jsonOk({
+      users: users.map(withBootstrapFlag),
+      viewerIsBootstrap: isBootstrapAdminEmail(session.email),
+    });
   } catch (error) {
     return handleRouteError(error);
   }
@@ -96,8 +111,11 @@ export const GET = withRole(["ADMIN"], async ({ request }) => {
  * Updates an existing user's role and/or resets their password.
  * Password reset also clears that account's email + linked device IP
  * rate-limit buckets so they can retry from attempt 1 with the temp password.
+ * Non-bootstrap admins may manage MEMBER/VOLUNTEER and promote to ADMIN,
+ * but cannot change the role of an existing ADMIN.
  *
  * @returns Updated user and optional `temporaryPassword` when reset
+ * @author Muhammad Naheen Mahboob
  */
 export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
   try {
@@ -144,6 +162,17 @@ export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
         return jsonError(
           "The bootstrap admin account cannot be demoted",
           400
+        );
+      }
+
+      // Only bootstrap may change another ADMIN's role (demote or reassign).
+      if (
+        existing.role === "ADMIN" &&
+        !isBootstrapAdminEmail(session.email)
+      ) {
+        return jsonError(
+          "Only the bootstrap admin can change another admin's role",
+          403
         );
       }
 
