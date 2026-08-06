@@ -4,12 +4,17 @@
  * Staff queues:
  * 1) Self-registered members awaiting first photo verification
  * 2) Existing members' photo retakes (approve → replace live; reject → keep old)
+ * Both queues use scroll panels so tall photo cards do not stretch the page.
+ *
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/Toast";
+import { ScrollPanel } from "@/components/ui/ScrollPanel";
 
 type PendingMember = {
   id: string;
@@ -130,47 +135,49 @@ export default function PendingMembersPage() {
         {members.length === 0 ? (
           <p className="text-slate-400">No pending registrations.</p>
         ) : (
-          <ul className="space-y-4">
-            {members.map((m) => (
-              <li
-                key={m.id}
-                className="flex flex-wrap gap-5 rounded-2xl border border-slate-700 bg-slate-900/70 p-4"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={m.photoUrl}
-                  alt=""
-                  className="h-36 w-36 rounded-2xl object-cover bg-slate-800"
-                />
-                <div className="flex-1 space-y-2">
-                  <h3 className="text-xl font-bold">{m.fullName}</h3>
-                  <p className="text-slate-300">{m.user.email}</p>
-                  <p className="text-sm text-slate-400">{m.phone}</p>
-                  <p className="text-xs text-slate-500">
-                    Submitted {new Date(m.createdAt).toLocaleString()}
-                  </p>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => actRegistration(m.id, "approve")}
-                      className="min-h-11 rounded-xl bg-emerald-600 px-4 font-semibold disabled:opacity-60"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => actRegistration(m.id, "reject")}
-                      className="min-h-11 rounded-xl bg-red-600 px-4 font-semibold disabled:opacity-60"
-                    >
-                      Reject
-                    </button>
+          <ScrollPanel label="Pending registrations">
+            <ul className="space-y-4">
+              {members.map((m) => (
+                <li
+                  key={m.id}
+                  className="flex flex-wrap gap-5 rounded-2xl border border-slate-700 bg-slate-900/70 p-4"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={m.photoUrl}
+                    alt=""
+                    className="h-36 w-36 rounded-2xl object-cover bg-slate-800"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <h3 className="text-xl font-bold">{m.fullName}</h3>
+                    <p className="text-slate-300">{m.user.email}</p>
+                    <p className="text-sm text-slate-400">{m.phone}</p>
+                    <p className="text-xs text-slate-500">
+                      Submitted {new Date(m.createdAt).toLocaleString()}
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => actRegistration(m.id, "approve")}
+                        className="min-h-11 rounded-xl bg-emerald-600 px-4 font-semibold disabled:opacity-60"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => actRegistration(m.id, "reject")}
+                        className="min-h-11 rounded-xl bg-red-600 px-4 font-semibold disabled:opacity-60"
+                      >
+                        Reject
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </ScrollPanel>
         )}
       </section>
 
@@ -186,66 +193,68 @@ export default function PendingMembersPage() {
         {photoRetakes.length === 0 ? (
           <p className="text-slate-400">No pending photo retakes.</p>
         ) : (
-          <ul className="space-y-4">
-            {photoRetakes.map((m) => (
-              <li
-                key={m.id}
-                className="flex flex-wrap gap-5 rounded-2xl border border-slate-700 bg-slate-900/70 p-4"
-              >
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase text-slate-500">
-                    Current
-                  </p>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={m.photoUrl}
-                    alt=""
-                    className="h-36 w-36 rounded-2xl object-cover bg-slate-800"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase text-amber-400">
-                    Proposed
-                  </p>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={m.pendingPhotoUrl ?? ""}
-                    alt=""
-                    className="h-36 w-36 rounded-2xl object-cover bg-slate-800 ring-2 ring-amber-500/60"
-                  />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <h3 className="text-xl font-bold">{m.fullName}</h3>
-                  <p className="text-slate-300">{m.user.email}</p>
-                  <p className="text-sm text-slate-400">{m.phone}</p>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => actPhotoRetake(m.id, "approve")}
-                      className="min-h-11 rounded-xl bg-emerald-600 px-4 font-semibold disabled:opacity-60"
-                    >
-                      Approve new photo
-                    </button>
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => actPhotoRetake(m.id, "reject")}
-                      className="min-h-11 rounded-xl bg-red-600 px-4 font-semibold disabled:opacity-60"
-                    >
-                      Reject — keep current
-                    </button>
-                    <Link
-                      href={`/dashboard/members?memberId=${m.id}`}
-                      className="inline-flex min-h-11 items-center rounded-xl bg-slate-700 px-4 font-semibold"
-                    >
-                      Open member
-                    </Link>
+          <ScrollPanel label="Pending photo retakes">
+            <ul className="space-y-4">
+              {photoRetakes.map((m) => (
+                <li
+                  key={m.id}
+                  className="flex flex-wrap gap-5 rounded-2xl border border-slate-700 bg-slate-900/70 p-4"
+                >
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase text-slate-500">
+                      Current
+                    </p>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={m.photoUrl}
+                      alt=""
+                      className="h-36 w-36 rounded-2xl object-cover bg-slate-800"
+                    />
                   </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase text-amber-400">
+                      Proposed
+                    </p>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={m.pendingPhotoUrl ?? ""}
+                      alt=""
+                      className="h-36 w-36 rounded-2xl object-cover bg-slate-800 ring-2 ring-amber-500/60"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <h3 className="text-xl font-bold">{m.fullName}</h3>
+                    <p className="text-slate-300">{m.user.email}</p>
+                    <p className="text-sm text-slate-400">{m.phone}</p>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => actPhotoRetake(m.id, "approve")}
+                        className="min-h-11 rounded-xl bg-emerald-600 px-4 font-semibold disabled:opacity-60"
+                      >
+                        Approve new photo
+                      </button>
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => actPhotoRetake(m.id, "reject")}
+                        className="min-h-11 rounded-xl bg-red-600 px-4 font-semibold disabled:opacity-60"
+                      >
+                        Reject — keep current
+                      </button>
+                      <Link
+                        href={`/dashboard/members?memberId=${m.id}`}
+                        className="inline-flex min-h-11 items-center rounded-xl bg-slate-700 px-4 font-semibold"
+                      >
+                        Open member
+                      </Link>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </ScrollPanel>
         )}
       </section>
     </div>

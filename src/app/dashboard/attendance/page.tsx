@@ -1,9 +1,17 @@
 "use client";
 
+/**
+ * Active attendance sessions currently inside the game room.
+ * Session rows are constrained to a scroll panel (`ScrollPanel`).
+ *
+ * @author Muhammad Naheen Mahboob
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/Toast";
+import { ScrollPanel } from "@/components/ui/ScrollPanel";
 
 type SessionRow = {
   id: string;
@@ -43,41 +51,43 @@ export default function AttendancePage() {
         <h1 className="text-2xl font-semibold">Currently inside</h1>
         <p className="text-lg font-bold text-emerald-400">{totalInside}</p>
       </div>
-      <ul className="space-y-3">
-        {sessions.map((s) => (
-          <li
-            key={s.id}
-            className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
-              s.sessionAlert === "overdue"
-                ? "border-red-500/50 bg-red-950/30"
-                : s.sessionAlert === "warning"
-                  ? "border-amber-500/50 bg-amber-950/30"
-                  : "border-slate-700 bg-slate-900/60"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={s.member.photoUrl}
-                alt=""
-                className="h-12 w-12 rounded-full object-cover bg-slate-800"
-              />
-              <div>
-                <p className="font-semibold">{s.member.fullName}</p>
-                <p className="text-sm text-slate-400">
-                  {s.durationMinutes} min inside
-                </p>
-              </div>
-            </div>
-            <Link
-              href={`/dashboard/members?memberId=${s.member.id}`}
-              className="min-h-12 rounded-xl bg-slate-700 px-4 py-3 font-semibold"
+      <ScrollPanel label="Members currently inside">
+        <ul className="space-y-3">
+          {sessions.map((s) => (
+            <li
+              key={s.id}
+              className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+                s.sessionAlert === "overdue"
+                  ? "border-red-500/50 bg-red-950/30"
+                  : s.sessionAlert === "warning"
+                    ? "border-amber-500/50 bg-amber-950/30"
+                    : "border-slate-700 bg-slate-900/60"
+              }`}
             >
-              Open
-            </Link>
-          </li>
-        ))}
-      </ul>
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={s.member.photoUrl}
+                  alt=""
+                  className="h-12 w-12 rounded-full object-cover bg-slate-800"
+                />
+                <div>
+                  <p className="font-semibold">{s.member.fullName}</p>
+                  <p className="text-sm text-slate-400">
+                    {s.durationMinutes} min inside
+                  </p>
+                </div>
+              </div>
+              <Link
+                href={`/dashboard/members?memberId=${s.member.id}`}
+                className="min-h-12 rounded-xl bg-slate-700 px-4 py-3 font-semibold"
+              >
+                Open
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </ScrollPanel>
     </div>
   );
 }

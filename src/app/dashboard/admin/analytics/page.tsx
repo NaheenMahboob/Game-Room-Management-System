@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Admin analytics charts and ranked equipment popularity.
+ * Popular-equipment ranking uses a scroll panel when many items appear.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
+
 import { useEffect, useState } from "react";
 import {
   Bar,
@@ -15,6 +22,7 @@ import {
 } from "recharts";
 import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/Toast";
+import { ScrollPanel } from "@/components/ui/ScrollPanel";
 
 type Analytics = {
   totals: {
@@ -142,19 +150,21 @@ export default function AdminAnalyticsPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
           <h3 className="mb-3 font-semibold">Most popular equipment</h3>
-          <ul className="space-y-2">
-            {analytics.popularEquipment.map((item, i) => (
-              <li
-                key={item.label}
-                className="flex justify-between rounded-xl bg-slate-950/50 px-3 py-2 text-sm"
-              >
-                <span>
-                  {i + 1}. {item.label}
-                </span>
-                <span className="font-mono text-amber-300">{item.count}</span>
-              </li>
-            ))}
-          </ul>
+          <ScrollPanel label="Popular equipment ranking" density="rows">
+            <ul className="space-y-2">
+              {analytics.popularEquipment.map((item, i) => (
+                <li
+                  key={item.label}
+                  className="flex justify-between rounded-xl bg-slate-950/50 px-3 py-2 text-sm"
+                >
+                  <span>
+                    {i + 1}. {item.label}
+                  </span>
+                  <span className="font-mono text-amber-300">{item.count}</span>
+                </li>
+              ))}
+            </ul>
+          </ScrollPanel>
         </section>
 
         <section className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">

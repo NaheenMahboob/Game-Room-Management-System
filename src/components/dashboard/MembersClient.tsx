@@ -5,7 +5,10 @@
  *
  * Roster shows members waiting to enter (portal “I’m here” / desk register)
  * and members already inside (borrow, return, sign-out). Sign-in still
- * requires an open check-in request.
+ * requires an open check-in request. Growing rosters use a scroll panel.
+ *
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import Link from "next/link";
@@ -15,6 +18,7 @@ import { apiFetch } from "@/lib/api/client";
 import { dashboardFetch } from "@/lib/offline/sync";
 import { uploadMemberPhotoDataUrl } from "@/lib/uploads/client";
 import { useToast } from "@/components/ui/Toast";
+import { ScrollPanel } from "@/components/ui/ScrollPanel";
 import { QrScannerModal } from "@/components/dashboard/QrScannerModal";
 import { GuestPassForm } from "@/components/dashboard/GuestPassForm";
 import { PhotoCapture } from "@/components/dashboard/PhotoCapture";
@@ -348,37 +352,39 @@ export function MembersClient() {
       </div>
 
       {hits.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {hits.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => loadMember(m.id)}
-              className="flex min-h-20 items-center gap-3 rounded-2xl border border-slate-700 bg-slate-900/70 p-3 text-left hover:border-emerald-500/50"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={m.photoUrl}
-                alt=""
-                className="h-14 w-14 rounded-full object-cover bg-slate-800"
-              />
-              <div>
-                <p className="font-semibold">{m.fullName}</p>
-                <p className="text-sm text-slate-400">{m.phone}</p>
-                {(m.attendances?.length ?? 0) > 0 ? (
-                  <p className="mt-1 text-xs font-semibold text-emerald-400">
-                    Inside
-                  </p>
-                ) : m.checkInRequestedAt ? (
-                  <p className="mt-1 text-xs font-semibold text-amber-300">
-                    Waiting since{" "}
-                    {new Date(m.checkInRequestedAt).toLocaleTimeString()}
-                  </p>
-                ) : null}
-              </div>
-            </button>
-          ))}
-        </div>
+        <ScrollPanel label="Waiting and inside members">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {hits.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => loadMember(m.id)}
+                className="flex min-h-20 items-center gap-3 rounded-2xl border border-slate-700 bg-slate-900/70 p-3 text-left hover:border-emerald-500/50"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={m.photoUrl}
+                  alt=""
+                  className="h-14 w-14 rounded-full object-cover bg-slate-800"
+                />
+                <div>
+                  <p className="font-semibold">{m.fullName}</p>
+                  <p className="text-sm text-slate-400">{m.phone}</p>
+                  {(m.attendances?.length ?? 0) > 0 ? (
+                    <p className="mt-1 text-xs font-semibold text-emerald-400">
+                      Inside
+                    </p>
+                  ) : m.checkInRequestedAt ? (
+                    <p className="mt-1 text-xs font-semibold text-amber-300">
+                      Waiting since{" "}
+                      {new Date(m.checkInRequestedAt).toLocaleTimeString()}
+                    </p>
+                  ) : null}
+                </div>
+              </button>
+            ))}
+          </div>
+        </ScrollPanel>
       ) : (
         <p className="rounded-2xl border border-dashed border-slate-700 px-4 py-8 text-center text-slate-400">
           {loading
@@ -557,11 +563,17 @@ export function MembersClient() {
           </div>
 
           {selected.loans.length > 0 ? (
-            <ul className="mt-4 space-y-2 text-sm text-slate-300">
-              {selected.loans.map((loan) => (
-                <li key={loan.id}>• {loan.equipment.label}</li>
-              ))}
-            </ul>
+            <ScrollPanel
+              label="Selected member active loans"
+              density="rows"
+              className="mt-4"
+            >
+              <ul className="space-y-2 text-sm text-slate-300">
+                {selected.loans.map((loan) => (
+                  <li key={loan.id}>• {loan.equipment.label}</li>
+                ))}
+              </ul>
+            </ScrollPanel>
           ) : null}
         </section>
       ) : null}

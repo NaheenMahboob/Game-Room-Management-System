@@ -1,9 +1,17 @@
 "use client";
 
+/**
+ * Dashboard home: occupancy, shift checklist, and active loans.
+ * Active loans use a scroll panel when many items are checked out.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
+
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/Toast";
+import { ScrollPanel } from "@/components/ui/ScrollPanel";
 
 type Occupancy = {
   membersInside: number;
@@ -133,41 +141,43 @@ export function DashboardHomeClient() {
         {loans.length === 0 ? (
           <p className="text-slate-400">No equipment checked out.</p>
         ) : (
-          <ul className="space-y-3">
-            {loans.map((loan) => (
-              <li
-                key={loan.id}
-                className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
-                  loan.alert === "overdue"
-                    ? "border-red-500/50 bg-red-950/30"
-                    : loan.alert === "warning"
-                      ? "border-amber-500/50 bg-amber-950/30"
-                      : "border-slate-700 bg-slate-950/40"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={loan.member.photoUrl}
-                    alt=""
-                    className="h-12 w-12 rounded-full object-cover bg-slate-800"
-                  />
-                  <div>
-                    <p className="font-semibold">{loan.member.fullName}</p>
-                    <p className="text-sm text-slate-400">
-                      {loan.equipment.label} · {loan.durationMinutes} min
-                    </p>
-                  </div>
-                </div>
-                <Link
-                  href={`/dashboard/members?memberId=${loan.member.id}`}
-                  className="min-h-12 rounded-xl bg-slate-700 px-4 py-3 text-sm font-semibold"
+          <ScrollPanel label="Active equipment loans">
+            <ul className="space-y-3">
+              {loans.map((loan) => (
+                <li
+                  key={loan.id}
+                  className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+                    loan.alert === "overdue"
+                      ? "border-red-500/50 bg-red-950/30"
+                      : loan.alert === "warning"
+                        ? "border-amber-500/50 bg-amber-950/30"
+                        : "border-slate-700 bg-slate-950/40"
+                  }`}
                 >
-                  Open
-                </Link>
-              </li>
-            ))}
-          </ul>
+                  <div className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={loan.member.photoUrl}
+                      alt=""
+                      className="h-12 w-12 rounded-full object-cover bg-slate-800"
+                    />
+                    <div>
+                      <p className="font-semibold">{loan.member.fullName}</p>
+                      <p className="text-sm text-slate-400">
+                        {loan.equipment.label} · {loan.durationMinutes} min
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/dashboard/members?memberId=${loan.member.id}`}
+                    className="min-h-12 rounded-xl bg-slate-700 px-4 py-3 text-sm font-semibold"
+                  >
+                    Open
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </ScrollPanel>
         )}
       </section>
 

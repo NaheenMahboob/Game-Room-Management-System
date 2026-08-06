@@ -1,8 +1,16 @@
 "use client";
 
+/**
+ * Admin announcements and events editor.
+ * Published lists use scroll panels so content does not stretch the page.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
+
 import { FormEvent, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/Toast";
+import { ScrollPanel } from "@/components/ui/ScrollPanel";
 
 type Announcement = {
   id: string;
@@ -119,34 +127,36 @@ export default function AdminContentPage() {
             Publish
           </button>
         </form>
-        <ul className="space-y-2">
-          {announcements.map((a) => (
-            <li
-              key={a.id}
-              className="rounded-xl border border-slate-700 bg-slate-900/50 p-3"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-semibold">{a.title}</p>
-                  <p className="text-sm text-slate-400">{a.targetAudience}</p>
-                  <p className="mt-1 text-sm">{a.content}</p>
+        <ScrollPanel label="Announcements">
+          <ul className="space-y-2">
+            {announcements.map((a) => (
+              <li
+                key={a.id}
+                className="rounded-xl border border-slate-700 bg-slate-900/50 p-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold">{a.title}</p>
+                    <p className="text-sm text-slate-400">{a.targetAudience}</p>
+                    <p className="mt-1 text-sm">{a.content}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await apiFetch(`/api/admin/announcements?id=${a.id}`, {
+                        method: "DELETE",
+                      });
+                      await refresh();
+                    }}
+                    className="text-xs text-red-300"
+                  >
+                    Delete
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await apiFetch(`/api/admin/announcements?id=${a.id}`, {
-                      method: "DELETE",
-                    });
-                    await refresh();
-                  }}
-                  className="text-xs text-red-300"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </ScrollPanel>
       </section>
 
       <section className="space-y-4">
@@ -187,36 +197,38 @@ export default function AdminContentPage() {
             Create event
           </button>
         </form>
-        <ul className="space-y-2">
-          {events.map((event) => (
-            <li
-              key={event.id}
-              className="rounded-xl border border-slate-700 bg-slate-900/50 p-3"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-semibold">{event.title}</p>
-                  <p className="text-sm text-amber-200">
-                    {new Date(event.eventDate).toLocaleString()}
-                  </p>
-                  <p className="mt-1 text-sm">{event.description}</p>
+        <ScrollPanel label="Events">
+          <ul className="space-y-2">
+            {events.map((event) => (
+              <li
+                key={event.id}
+                className="rounded-xl border border-slate-700 bg-slate-900/50 p-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold">{event.title}</p>
+                    <p className="text-sm text-amber-200">
+                      {new Date(event.eventDate).toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-sm">{event.description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await apiFetch(`/api/admin/events?id=${event.id}`, {
+                        method: "DELETE",
+                      });
+                      await refresh();
+                    }}
+                    className="text-xs text-red-300"
+                  >
+                    Delete
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await apiFetch(`/api/admin/events?id=${event.id}`, {
-                      method: "DELETE",
-                    });
-                    await refresh();
-                  }}
-                  className="text-xs text-red-300"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </ScrollPanel>
       </section>
     </div>
   );

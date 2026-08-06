@@ -3,6 +3,8 @@
 /**
  * Admin audit log viewer: filterable list in a scroll panel sized for ~10
  * visible rows; additional entries scroll within the panel.
+ *
+ * @author Muhammad Naheen Mahboob
  */
 
 import { useEffect, useState } from "react";

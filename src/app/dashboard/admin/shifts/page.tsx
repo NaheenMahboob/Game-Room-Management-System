@@ -1,8 +1,16 @@
 "use client";
 
+/**
+ * Admin volunteer shift schedule by day-of-week.
+ * Each day's shift list scrolls when it grows.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
+
 import { FormEvent, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/Toast";
+import { ScrollPanel } from "@/components/ui/ScrollPanel";
 
 type User = { id: string; email: string; role: string };
 type Shift = {
@@ -136,31 +144,33 @@ export default function AdminShiftsPage() {
             className="rounded-2xl border border-slate-700 bg-slate-900/50 p-4"
           >
             <h3 className="mb-3 font-semibold text-amber-200">{day}</h3>
-            <ul className="space-y-2">
-              {shifts
-                .filter((s) => s.dayOfWeek === dayIndex)
-                .map((s) => (
-                  <li
-                    key={s.id}
-                    className="rounded-xl bg-slate-950/60 px-3 py-2 text-sm"
-                  >
-                    <p className="font-medium">
-                      {s.startTime} – {s.endTime}
-                    </p>
-                    <p className="text-slate-400">{s.volunteer.email}</p>
-                    <button
-                      type="button"
-                      onClick={() => removeShift(s.id)}
-                      className="mt-2 text-xs text-red-300 hover:underline"
+            <ScrollPanel label={`${day} shifts`} density="rows">
+              <ul className="space-y-2">
+                {shifts
+                  .filter((s) => s.dayOfWeek === dayIndex)
+                  .map((s) => (
+                    <li
+                      key={s.id}
+                      className="rounded-xl bg-slate-950/60 px-3 py-2 text-sm"
                     >
-                      Remove
-                    </button>
-                  </li>
-                ))}
-              {shifts.filter((s) => s.dayOfWeek === dayIndex).length === 0 ? (
-                <li className="text-sm text-slate-500">No shifts</li>
-              ) : null}
-            </ul>
+                      <p className="font-medium">
+                        {s.startTime} – {s.endTime}
+                      </p>
+                      <p className="text-slate-400">{s.volunteer.email}</p>
+                      <button
+                        type="button"
+                        onClick={() => removeShift(s.id)}
+                        className="mt-2 text-xs text-red-300 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                {shifts.filter((s) => s.dayOfWeek === dayIndex).length === 0 ? (
+                  <li className="text-sm text-slate-500">No shifts</li>
+                ) : null}
+              </ul>
+            </ScrollPanel>
           </section>
         ))}
       </div>

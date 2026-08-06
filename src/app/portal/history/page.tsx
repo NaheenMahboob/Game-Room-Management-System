@@ -1,15 +1,33 @@
 "use client";
 
+/**
+ * Member portal visit and loan history.
+ * Attendance and loan lists use scroll panels as history grows.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
+
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/Toast";
+import { ScrollPanel } from "@/components/ui/ScrollPanel";
 
+/**
+ * Attendance row from portal history API.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 type Attendance = {
   id: string;
   signInTime: string;
   signOutTime: string | null;
 };
 
+/**
+ * Loan row from portal history API.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 type Loan = {
   id: string;
   borrowedAt: string;
@@ -17,6 +35,11 @@ type Loan = {
   equipment: { label: string; type: string };
 };
 
+/**
+ * Renders the signed-in member's attendance and loan history.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 export default function PortalHistoryPage() {
   const toast = useToast();
   const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -44,24 +67,24 @@ export default function PortalHistoryPage() {
         {attendance.length === 0 ? (
           <p className="text-slate-400">No visits yet.</p>
         ) : (
-          <ul className="space-y-2">
-            {attendance.map((row) => (
-              <li
-                key={row.id}
-                className="rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3 text-sm"
-              >
-                <p>
-                  In: {new Date(row.signInTime).toLocaleString()}
-                </p>
-                <p className="text-slate-400">
-                  Out:{" "}
-                  {row.signOutTime
-                    ? new Date(row.signOutTime).toLocaleString()
-                    : "Still inside"}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <ScrollPanel label="My attendance history">
+            <ul className="space-y-2">
+              {attendance.map((row) => (
+                <li
+                  key={row.id}
+                  className="rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3 text-sm"
+                >
+                  <p>In: {new Date(row.signInTime).toLocaleString()}</p>
+                  <p className="text-slate-400">
+                    Out:{" "}
+                    {row.signOutTime
+                      ? new Date(row.signOutTime).toLocaleString()
+                      : "Still inside"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </ScrollPanel>
         )}
       </section>
 
@@ -70,27 +93,29 @@ export default function PortalHistoryPage() {
         {loans.length === 0 ? (
           <p className="text-slate-400">No loans yet.</p>
         ) : (
-          <ul className="space-y-2">
-            {loans.map((loan) => {
-              const start = new Date(loan.borrowedAt).getTime();
-              const end = loan.returnedAt
-                ? new Date(loan.returnedAt).getTime()
-                : Date.now();
-              const mins = Math.max(0, Math.floor((end - start) / 60000));
-              return (
-                <li
-                  key={loan.id}
-                  className="rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3 text-sm"
-                >
-                  <p className="font-medium">{loan.equipment.label}</p>
-                  <p className="text-slate-400">
-                    {new Date(loan.borrowedAt).toLocaleString()} · {mins} min
-                    {loan.returnedAt ? "" : " · active"}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
+          <ScrollPanel label="My loan history">
+            <ul className="space-y-2">
+              {loans.map((loan) => {
+                const start = new Date(loan.borrowedAt).getTime();
+                const end = loan.returnedAt
+                  ? new Date(loan.returnedAt).getTime()
+                  : Date.now();
+                const mins = Math.max(0, Math.floor((end - start) / 60000));
+                return (
+                  <li
+                    key={loan.id}
+                    className="rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3 text-sm"
+                  >
+                    <p className="font-medium">{loan.equipment.label}</p>
+                    <p className="text-slate-400">
+                      {new Date(loan.borrowedAt).toLocaleString()} · {mins} min
+                      {loan.returnedAt ? "" : " · active"}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          </ScrollPanel>
         )}
       </section>
     </div>
