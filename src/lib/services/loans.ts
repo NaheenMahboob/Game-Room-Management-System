@@ -4,6 +4,11 @@
  * When an item has a wait queue, return does not free it for everyone: it is
  * reserved for the head of the queue until that member borrows (their entry is
  * then fulfilled and the next person becomes reserved after the next return).
+ *
+ * Members with any active loan past its type time limit cannot borrow more
+ * until those overdue items are returned.
+ *
+ * @author Muhammad Naheen Mahboob
  */
 
 import type { Prisma } from "@/generated/prisma";
@@ -20,6 +25,53 @@ import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 
 /** Prisma client or an open transaction used for loan queries. */
 type Db = Prisma.TransactionClient | typeof prisma;
+
+/**
+ * Finds open loans for a member that have exceeded their equipment-type time limit.
+ *
+ * Uses the same threshold as the desk “warning” alert (`minutes >= limit`).
+ * Types without a configured limit are ignored.
+ *
+ * @param memberId - Borrower to inspect
+ * @returns Labels of past-limit loans (empty if none / no limits apply)
+ * @author Muhammad Naheen Mahboob
+ */
+export async function listPastLimitLoanLabels(
+  memberId: string
+): Promise<string[]> {
+  const timeLimits = await getEquipmentTimeLimits();
+  const openLoans = await prisma.loan.findMany({
+    where: { memberId, returnedAt: null },
+    include: { equipment: { select: { label: true, type: true } } },
+  });
+
+  const pastLimit: string[] = [];
+  for (const loan of openLoans) {
+    const limit = timeLimits[loan.equipment.type];
+    if (limit == null) continue;
+    const minutes = minutesBetween(loan.borrowedAt);
+    // At or past the configured limit → must return before borrowing more.
+    if (minutes >= limit) {
+      pastLimit.push(loan.equipment.label);
+    }
+  }
+  return pastLimit;
+}
+
+/**
+ * Blocks new borrows when the member still holds past-limit equipment.
+ *
+ * @param memberId - Prospective borrower
+ * @throws Error listing items that must be returned first
+ * @author Muhammad Naheen Mahboob
+ */
+async function assertNoPastLimitLoans(memberId: string): Promise<void> {
+  const labels = await listPastLimitLoanLabels(memberId);
+  if (labels.length === 0) return;
+  throw new Error(
+    `Return overdue equipment before borrowing more: ${labels.join(", ")}`
+  );
+}
 
 /**
  * Lists equipment with active loans, queue entries, availability, and time-limit alerts.
@@ -231,10 +283,13 @@ async function fulfillQueueHeadOnBorrow(
  *
  * If an item has a wait queue, only the head of that queue may borrow it;
  * borrowing fulfills their entry and shortens the queue.
+ * Refuses the whole request when the member already holds any loan past its
+ * type time limit — those items must be returned first.
  *
  * @param memberId - Borrower member id
  * @param equipmentIds - Equipment to loan
  * @param performedByUserId - Staff user recording the borrow
+ * @author Muhammad Naheen Mahboob
  */
 export async function borrowEquipment(
   memberId: string,
@@ -258,6 +313,9 @@ export async function borrowEquipment(
   if (!signedIn) {
     throw new Error("Member must be signed in before borrowing equipment");
   }
+
+  // Soft time limits: past-limit open loans block further checkouts until returned.
+  await assertNoPastLimitLoans(memberId);
 
   return prisma.$transaction(async (tx) => {
     const loans = [];

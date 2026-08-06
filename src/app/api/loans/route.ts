@@ -1,6 +1,9 @@
 /**
  * Equipment loans API for staff.
  * GET lists active loans; POST borrows equipment for a member.
+ * POST is refused when the member holds loans past their type time limit.
+ *
+ * @author Muhammad Naheen Mahboob
  */
 
 import { withRole } from "@/lib/auth/api";
@@ -8,7 +11,11 @@ import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { borrowSchema } from "@/lib/validation/schemas";
 import { borrowEquipment, listActiveLoans } from "@/lib/services/loans";
 
-/** Lists active loans, optionally filtered by member. */
+/**
+ * Lists active loans, optionally filtered by member.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   try {
     const { searchParams } = new URL(request.url);
@@ -20,7 +27,11 @@ export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   }
 });
 
-/** Borrows one or more equipment items for a member. */
+/**
+ * Borrows one or more equipment items for a member.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
   try {
     const body = await request.json();

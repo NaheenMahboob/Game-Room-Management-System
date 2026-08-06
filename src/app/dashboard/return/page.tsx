@@ -1,11 +1,25 @@
 "use client";
 
+/**
+ * Return equipment desk: active loans grouped by member.
+ * Outer scroll walks members who have open loans; each member card has an
+ * inner scroll for that member’s individual loaned items.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
+
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api/client";
 import { dashboardFetch } from "@/lib/offline/sync";
 import { useToast } from "@/components/ui/Toast";
+import { ScrollPanel } from "@/components/ui/ScrollPanel";
 
+/**
+ * Active loan row shown on the return desk.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 type Loan = {
   id: string;
   durationMinutes: number;
@@ -14,6 +28,11 @@ type Loan = {
   equipment: { id: string; label: string };
 };
 
+/**
+ * Return desk UI: nested scroll panels for members → their loans.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 function ReturnInner() {
   const toast = useToast();
   const searchParams = useSearchParams();
@@ -21,6 +40,11 @@ function ReturnInner() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
 
+  /**
+   * Reloads active loans (optionally filtered to one member via query string).
+   *
+   * @author Muhammad Naheen Mahboob
+   */
   const refresh = useCallback(async () => {
     const qs = memberId ? `?memberId=${memberId}` : "";
     const data = await apiFetch<{ loans: Loan[] }>(`/api/loans${qs}`);
@@ -33,6 +57,11 @@ function ReturnInner() {
     );
   }, [refresh, toast]);
 
+  /**
+   * Returns a single loan with optional condition notes.
+   *
+   * @author Muhammad Naheen Mahboob
+   */
   async function returnOne(loanId: string) {
     try {
       await dashboardFetch("/api/loans/return", {
@@ -49,6 +78,11 @@ function ReturnInner() {
     }
   }
 
+  /**
+   * Returns every open loan for one member.
+   *
+   * @author Muhammad Naheen Mahboob
+   */
   async function returnAllForMember(id: string) {
     try {
       await dashboardFetch("/api/loans/return", {
@@ -68,76 +102,99 @@ function ReturnInner() {
     return acc;
   }, {});
 
+  const memberEntries = Object.entries(byMember);
+
   return (
     <div className="space-y-5">
       <h1 className="text-2xl font-semibold">Return equipment</h1>
-      {Object.keys(byMember).length === 0 ? (
+      {memberEntries.length === 0 ? (
         <p className="text-slate-400">No active loans.</p>
       ) : (
-        Object.entries(byMember).map(([id, memberLoans]) => (
-          <section
-            key={id}
-            className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4"
-          >
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={memberLoans[0]!.member.photoUrl}
-                  alt=""
-                  className="h-12 w-12 rounded-full object-cover bg-slate-800"
-                />
-                <h2 className="text-xl font-semibold">
-                  {memberLoans[0]!.member.fullName}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => returnAllForMember(id)}
-                className="min-h-12 rounded-xl bg-amber-500 px-4 font-semibold text-slate-950"
+        // Outer: scroll through members who currently hold equipment.
+        <ScrollPanel label="Members with active loans">
+          <div className="space-y-4">
+            {memberEntries.map(([id, memberLoans]) => (
+              <section
+                key={id}
+                className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4"
               >
-                Return All
-              </button>
-            </div>
-            <ul className="space-y-3">
-              {memberLoans.map((loan) => (
-                <li
-                  key={loan.id}
-                  className="rounded-xl border border-slate-700 bg-slate-950/50 p-3"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-semibold">{loan.equipment.label}</p>
-                      <p className="text-sm text-slate-400">
-                        {loan.durationMinutes} min · {loan.alert}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => returnOne(loan.id)}
-                      className="min-h-12 rounded-xl bg-emerald-600 px-4 font-semibold"
-                    >
-                      Return
-                    </button>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={memberLoans[0]!.member.photoUrl}
+                      alt=""
+                      className="h-12 w-12 rounded-full object-cover bg-slate-800"
+                    />
+                    <h2 className="text-xl font-semibold">
+                      {memberLoans[0]!.member.fullName}
+                    </h2>
                   </div>
-                  <input
-                    value={notes[loan.id] ?? ""}
-                    onChange={(e) =>
-                      setNotes((n) => ({ ...n, [loan.id]: e.target.value }))
-                    }
-                    placeholder="Condition notes (optional)"
-                    className="mt-2 min-h-12 w-full rounded-xl border border-slate-600 bg-slate-900 px-3 text-sm"
-                  />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+                  <button
+                    type="button"
+                    onClick={() => returnAllForMember(id)}
+                    className="min-h-12 rounded-xl bg-amber-500 px-4 font-semibold text-slate-950"
+                  >
+                    Return All
+                  </button>
+                </div>
+                {/* Inner: scroll this member’s loaned items independently. */}
+                <ScrollPanel
+                  label={`Loans for ${memberLoans[0]!.member.fullName}`}
+                  density="section"
+                >
+                  <ul className="space-y-3">
+                    {memberLoans.map((loan) => (
+                      <li
+                        key={loan.id}
+                        className="rounded-xl border border-slate-700 bg-slate-950/50 p-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="font-semibold">
+                              {loan.equipment.label}
+                            </p>
+                            <p className="text-sm text-slate-400">
+                              {loan.durationMinutes} min · {loan.alert}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => returnOne(loan.id)}
+                            className="min-h-12 rounded-xl bg-emerald-600 px-4 font-semibold"
+                          >
+                            Return
+                          </button>
+                        </div>
+                        <input
+                          value={notes[loan.id] ?? ""}
+                          onChange={(e) =>
+                            setNotes((n) => ({
+                              ...n,
+                              [loan.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="Condition notes (optional)"
+                          className="mt-2 min-h-12 w-full rounded-xl border border-slate-600 bg-slate-900 px-3 text-sm"
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollPanel>
+              </section>
+            ))}
+          </div>
+        </ScrollPanel>
       )}
     </div>
   );
 }
 
+/**
+ * Suspense wrapper for search-param–driven return filtering.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 export default function ReturnPage() {
   return (
     <Suspense fallback={<p>Loading…</p>}>
