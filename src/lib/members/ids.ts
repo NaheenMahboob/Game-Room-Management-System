@@ -1,11 +1,16 @@
 /**
  * Member QR payload and temporary password generators.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
 
-/** Creates a unique QR scan value prefixed with `m_`. */
+/** Creates a unique QR scan value prefixed with `m_`.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 export function generateQrPayload(): string {
   return `m_${nanoid(16)}`;
 }
@@ -14,6 +19,8 @@ export function generateQrPayload(): string {
  * Generates a random temporary password using an unambiguous character alphabet.
  *
  * @param length - Number of characters (default 12)
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export function generateTempPassword(length = 12): string {
   const alphabet =

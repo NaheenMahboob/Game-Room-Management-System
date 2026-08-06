@@ -5,14 +5,22 @@
  * Emits a local `data:` URL preview; callers upload via
  * {@link uploadMemberPhotoDataUrl} before persisting a member record.
  * Supports clearing the preview with an X so the user can re-capture.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { useEffect, useRef, useState } from "react";
 
 type PhotoCaptureProps = {
-  /** Current preview (`data:` URL / API path) or `null` when empty. */
+  /** Current preview (`data:` URL / API path) or `null` when empty.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   value: string | null;
-  /** Called with a JPEG/PNG data URL after capture/file select, or `null` on clear. */
+  /** Called with a JPEG/PNG data URL after capture/file select, or `null` on clear.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   onChange: (dataUrl: string | null) => void;
 };
 
@@ -20,12 +28,17 @@ type PhotoCaptureProps = {
  * Tablet-friendly photo capture control with camera, file upload, and clear.
  *
  * @param props - Controlled preview value and change handler
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
-  /** Live MediaStream — stopped on capture, clear, unmount, or cancel. */
+  /** Live MediaStream — stopped on capture, clear, unmount, or cancel.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
@@ -34,7 +47,10 @@ export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
     };
   }, []);
 
-  /** Stops any live camera tracks. */
+  /** Stops any live camera tracks.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   function stopStream() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -43,7 +59,9 @@ export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
 
   /**
    * Clears the preview so the user can capture or upload again.
-   */
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   function clearPhoto() {
     stopStream();
     onChange(null);
@@ -52,7 +70,9 @@ export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
 
   /**
    * Requests front-facing camera access and starts the preview video.
-   */
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   async function startCamera() {
     try {
       setError(null);
@@ -73,7 +93,9 @@ export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
 
   /**
    * Snapshots the current video frame to a JPEG data URL and stops the stream.
-   */
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   function capture() {
     const video = videoRef.current;
     if (!video) return;
@@ -93,7 +115,9 @@ export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
    * Reads a picked image file into a data URL for the same preview path.
    *
    * @param file - Selected image, or `null` if the picker was cancelled
-   */
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   function onFile(file: File | null) {
     if (!file) return;
     const reader = new FileReader();

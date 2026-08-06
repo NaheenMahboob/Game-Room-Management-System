@@ -5,6 +5,8 @@
  * - `POST` — self-service stores a pending retake (old photo kept until staff
  *   approve/reject); staff updating someone else applies immediately
  * - `PATCH` — staff `{ action: "approve" | "reject" }` for a pending retake
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { NextResponse } from "next/server";
@@ -28,7 +30,10 @@ import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";
 import { prisma } from "@/lib/prisma";
 
-/** Whether the session may read or upload photos for this member. */
+/** Whether the session may read or upload photos for this member.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 function canAccessMemberPhoto(
   session: { role: string; memberId?: string },
   memberId: string
@@ -38,6 +43,8 @@ function canAccessMemberPhoto(
 
 /**
  * Streams the live profile photo, or the pending retake when `variant=pending`.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export const GET = withAuth(async ({ request, session }, rawParams) => {
   try {
@@ -87,6 +94,8 @@ export const GET = withAuth(async ({ request, session }, rawParams) => {
 /**
  * Uploads a new photo. Self-service → pending approval; staff on another
  * member → immediate replace.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export const POST = withAuth(async ({ request, session }, rawParams) => {
   try {
@@ -195,13 +204,18 @@ export const POST = withAuth(async ({ request, session }, rawParams) => {
   }
 });
 
-/** Staff review action for a pending photo retake. */
+/** Staff review action for a pending photo retake.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 const reviewSchema = z.object({
   action: z.enum(["approve", "reject"]),
 });
 
 /**
  * Staff approve (promote pending → live) or reject (delete pending, keep live).
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export const PATCH = withRole(
   ["VOLUNTEER", "ADMIN"],

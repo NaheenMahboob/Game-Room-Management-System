@@ -4,6 +4,8 @@
  *
  * Only considers `self-*` / `reg-*` files older than {@link DEFAULT_MAX_AGE_MS}
  * that are not referenced by any `Member.photoUrl`.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { readdir, stat } from "fs/promises";
@@ -15,17 +17,29 @@ import {
   storedPhotoFilename,
 } from "@/lib/uploads/memberPhoto";
 
-/** Keep recent uploads so an in-flight register is not raced. */
+/** Keep recent uploads so an in-flight register is not raced.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 export const DEFAULT_ORPHAN_PHOTO_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour
 
-/** Filename pattern for pre-registration uploads eligible for orphan cleanup. */
+/** Filename pattern for pre-registration uploads eligible for orphan cleanup.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 const ORPHAN_NAME =
   /^(self|reg)-[\w.-]+\.(jpe?g|png|webp)$/i;
 
-/** Timestamp (ms) of the last background sweep, for throttling. */
+/** Timestamp (ms) of the last background sweep, for throttling.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 let lastSweepAt = 0;
 
-/** Minimum time between automatic orphan photo sweeps (5 minutes). */
+/** Minimum time between automatic orphan photo sweeps (5 minutes).
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 const SWEEP_MIN_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
@@ -33,6 +47,8 @@ const SWEEP_MIN_INTERVAL_MS = 5 * 60 * 1000;
  *
  * @param maxAgeMs - Minimum age before a file is eligible for deletion
  * @returns Number of files deleted
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export async function sweepOrphanRegistrationPhotos(
   maxAgeMs = DEFAULT_ORPHAN_PHOTO_MAX_AGE_MS
@@ -79,6 +95,8 @@ export async function sweepOrphanRegistrationPhotos(
 /**
  * Runs {@link sweepOrphanRegistrationPhotos} at most once per
  * {@link SWEEP_MIN_INTERVAL_MS} (fire-and-forget safe from upload handlers).
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export function scheduleOrphanRegistrationPhotoSweep(): void {
   const now = Date.now();

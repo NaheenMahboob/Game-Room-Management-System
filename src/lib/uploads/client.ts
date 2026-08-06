@@ -1,6 +1,8 @@
 /**
  * Browser helpers for turning camera/file previews into multipart uploads
  * against the member photo API routes.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 /**
@@ -11,6 +13,8 @@
  * @param filename - Filename attached to the multipart part
  * @returns A `File` with the decoded bytes and original MIME type
  * @throws If the string is not a valid base64 data URL
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export function dataUrlToFile(dataUrl: string, filename = "photo.jpg"): File {
   const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
@@ -30,11 +34,20 @@ export function dataUrlToFile(dataUrl: string, filename = "photo.jpg"): File {
   return new File([bytes], filename, { type: mime });
 }
 
-/** Loose response shape covering both upload endpoints. */
+/** Loose response shape covering both upload endpoints.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 type UploadResponse = {
-  /** Storage filename from `POST /api/uploads/member-photo`. */
+  /** Storage filename from `POST /api/uploads/member-photo`.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   photoUrl?: string;
-  /** Updated member from `POST /api/members/[id]/photo` (client API photo path). */
+  /** Updated member from `POST /api/members/[id]/photo` (client API photo path).
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   member?: { photoUrl?: string };
   error?: string;
 };
@@ -48,6 +61,8 @@ type UploadResponse = {
  * @param file - Image file to upload
  * @param endpoint - Absolute path of the upload API route
  * @returns Storage filename or `/api/members/.../photo` depending on endpoint
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export async function uploadMemberPhotoFile(
   file: File,
@@ -77,6 +92,8 @@ export async function uploadMemberPhotoFile(
  * @param dataUrl - Camera/file preview (`data:...`), storage filename, or API path
  * @param endpoint - Upload API route to POST against when conversion is needed
  * @returns Storage filename (registration) or API photo path (retake)
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export async function uploadMemberPhotoDataUrl(
   dataUrl: string,

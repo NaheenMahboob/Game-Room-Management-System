@@ -5,30 +5,44 @@
  *
  * `Member.photoUrl` stores the on-disk filename (e.g. `reg-abc.jpg`), never a
  * public URL or base64 data URL.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { nanoid } from "nanoid";
 
-/** Absolute filesystem directory for private member photos. */
+/** Absolute filesystem directory for private member photos.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 export const MEMBER_UPLOAD_DIR = path.join(
   process.cwd(),
   "storage",
   "members"
 );
 
-/** Shared placeholder filename used by seed data. */
+/** Shared placeholder filename used by seed data.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 export const PLACEHOLDER_PHOTO_FILENAME = "placeholder.jpg";
 
-/** Allowed MIME types mapped to file extensions kept on disk. */
+/** Allowed MIME types mapped to file extensions kept on disk.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 const ALLOWED_MIME: Record<string, string> = {
   "image/jpeg": ".jpg",
   "image/png": ".png",
   "image/webp": ".webp",
 };
 
-/** File extension (lowercase, with dot) to Content-Type for streaming. */
+/** File extension (lowercase, with dot) to Content-Type for streaming.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 const EXT_TO_MIME: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
@@ -36,7 +50,10 @@ const EXT_TO_MIME: Record<string, string> = {
   ".webp": "image/webp",
 };
 
-/** Hard cap on uploaded photo size (2 MiB). */
+/** Hard cap on uploaded photo size (2 MiB).
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 export const MAX_MEMBER_PHOTO_BYTES = 2 * 1024 * 1024;
 
 /**
@@ -45,6 +62,8 @@ export const MAX_MEMBER_PHOTO_BYTES = 2 * 1024 * 1024;
  * @param memberId - Member cuid
  * @param variant - `pending` streams the awaiting-approval retake when present
  * @returns API path that streams the private file when authorized
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export function memberPhotoSrc(
   memberId: string,
@@ -59,6 +78,8 @@ export function memberPhotoSrc(
 /**
  * Replaces stored filenames with client-facing API photo URLs.
  * Maps `pendingPhotoUrl` (filename) to a pending API path when set.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export function withClientPhotoUrl<
   T extends { id: string; photoUrl: string; pendingPhotoUrl?: string | null },
@@ -77,6 +98,8 @@ export function withClientPhotoUrl<
  *
  * @param mime - Content-Type from the uploaded file
  * @returns Extension including the leading dot, or `null` if unsupported
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export function extensionForMime(mime: string): string | null {
   return ALLOWED_MIME[mime] ?? null;
@@ -87,6 +110,8 @@ export function extensionForMime(mime: string): string | null {
  *
  * @param filename - Stored photo filename
  * @returns MIME type, defaulting to `application/octet-stream`
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export function mimeTypeForFilename(filename: string): string {
   const ext = path.extname(filename).toLowerCase();
@@ -100,6 +125,8 @@ export function mimeTypeForFilename(filename: string): string {
  *
  * @param photoUrl - Value stored on `Member.photoUrl`
  * @returns Safe filename, or `null` if unusable
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export function storedPhotoFilename(
   photoUrl: string | null | undefined
@@ -116,6 +143,8 @@ export function storedPhotoFilename(
  * Absolute path for a stored member photo filename.
  *
  * @param filename - Basename under `storage/members`
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export function absolutePhotoPath(filename: string): string {
   return path.join(MEMBER_UPLOAD_DIR, filename);
@@ -129,6 +158,8 @@ export function absolutePhotoPath(filename: string): string {
  * @param namePrefix - Filename prefix before the nanoid
  * @returns On-disk filename to store in `Member.photoUrl`
  * @throws If the MIME type is unsupported, the buffer is empty, or it exceeds the size cap
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export async function saveMemberPhotoFile(
   buffer: Buffer,
@@ -159,6 +190,8 @@ export async function saveMemberPhotoFile(
  * Skips the seeded placeholder so shared defaults are never removed.
  *
  * @param photoUrl - Value currently stored on `Member.photoUrl`
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export async function deleteMemberPhotoIfStored(
   photoUrl: string | null | undefined
@@ -179,6 +212,8 @@ export async function deleteMemberPhotoIfStored(
  * Ignores other filenames so a crafted body cannot remove unrelated photos.
  *
  * @param photoUrl - Filename returned by a registration photo upload endpoint
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export async function deleteOrphanRegistrationPhoto(
   photoUrl: string | null | undefined
@@ -194,6 +229,8 @@ export async function deleteOrphanRegistrationPhoto(
  *
  * @param photoUrl - Value stored on `Member.photoUrl`
  * @returns File bytes and MIME type, or `null` if missing/invalid
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export async function readMemberPhotoFile(
   photoUrl: string | null | undefined
@@ -219,6 +256,8 @@ export async function readMemberPhotoFile(
  * @param formData - Request form data expected to contain a `file` blob
  * @returns Image buffer plus its MIME type for {@link saveMemberPhotoFile}
  * @throws If the field is missing, the type is unsupported, or size exceeds the cap
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export async function parseMemberPhotoFormData(
   formData: FormData

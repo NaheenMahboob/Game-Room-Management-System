@@ -5,6 +5,8 @@
  * Uploads the profile photo to private storage first, then creates the member
  * with the returned storage filename. Shows a persistent credentials panel
  * (email + temp password) that must be dismissed before leaving.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { FormEvent, useState } from "react";
@@ -17,6 +19,8 @@ import { SignaturePad } from "@/components/dashboard/SignaturePad";
 
 /**
  * Multi-step registration UI: details → photo → waiver → credentials panel.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export default function RegisterMemberPage() {
   const toast = useToast();
@@ -30,7 +34,10 @@ export default function RegisterMemberPage() {
     loginEmail: string;
     temporaryPassword: string;
   } | null>(null);
-  /** Done stays disabled until credentials are copied. */
+  /** Done stays disabled until credentials are copied.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   const [credentialsCopied, setCredentialsCopied] = useState(false);
   const [form, setForm] = useState({
     fullName: "",

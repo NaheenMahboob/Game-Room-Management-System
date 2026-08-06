@@ -3,6 +3,8 @@
  *
  * Public (rate-limited) multipart upload for member self-registration photos.
  * Returns a storage filename for the subsequent register call.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -21,6 +23,8 @@ import {
  * Best-effort client IP from proxy headers or the socket address.
  *
  * @param request - Incoming Next.js request
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 function clientIp(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -32,6 +36,8 @@ function clientIp(request: NextRequest): string {
  * Accepts an image from an unauthenticated registrant.
  *
  * @returns `201` with `{ photoUrl }` storage filename
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export async function POST(request: NextRequest) {
   try {

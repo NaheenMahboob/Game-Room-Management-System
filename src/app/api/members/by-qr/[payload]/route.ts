@@ -3,13 +3,18 @@
  *
  * Looks up a member by QR for desk flows. Sign-in is only allowed for people
  * on the waiting list; already-inside members can still be opened for sign-out.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { withRole } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { getMemberByQr } from "@/lib/services/members";
 
-/** Resolves a member record from a URL-encoded QR payload. */
+/** Resolves a member record from a URL-encoded QR payload.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async (_ctx, rawParams) => {
   try {
     const params = rawParams as { payload: string };

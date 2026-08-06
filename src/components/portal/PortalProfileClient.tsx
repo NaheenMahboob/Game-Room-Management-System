@@ -3,6 +3,8 @@
 /**
  * Member portal profile: contact edits, QR card, self-service photo update,
  * and “I’m here” check-in request for the volunteer waiting list.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -12,7 +14,10 @@ import { uploadMemberPhotoDataUrl } from "@/lib/uploads/client";
 import { useToast } from "@/components/ui/Toast";
 import { PhotoCapture } from "@/components/dashboard/PhotoCapture";
 
-/** Subset of member fields shown and editable in the portal. */
+/** Subset of member fields shown and editable in the portal.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 type Member = {
   id: string;
   fullName: string;
@@ -29,7 +34,10 @@ type Member = {
 };
 
 type PortalProfileClientProps = {
-  /** Authenticated member's id (from the portal session). */
+  /** Authenticated member's id (from the portal session).
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   memberId: string;
 };
 
@@ -37,16 +45,24 @@ type PortalProfileClientProps = {
  * Renders the logged-in member's profile with check-in, photo retake, and contact save.
  *
  * @param props - Contains the current member id
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
   const toast = useToast();
   const [member, setMember] = useState<Member | null>(null);
   const [saving, setSaving] = useState(false);
   const [updatingPhoto, setUpdatingPhoto] = useState(false);
-  /** Local preview before multipart upload to `/api/members/[id]/photo`. */
+  /** Local preview before multipart upload to `/api/members/[id]/photo`.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   const [photoDraft, setPhotoDraft] = useState<string | null>(null);
   const [savingPhoto, setSavingPhoto] = useState(false);
-  /** True while posting/cancelling the desk waiting-list request. */
+  /** True while posting/cancelling the desk waiting-list request.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   const [checkInBusy, setCheckInBusy] = useState(false);
   const [form, setForm] = useState({
     phone: "",
@@ -58,7 +74,9 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
 
   /**
    * Reloads the member profile from the API into local state.
-   */
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   async function refreshMember() {
     const data = await apiFetch<{ member: Member }>(`/api/members/${memberId}`);
     setMember(data.member);
@@ -79,7 +97,9 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
 
   /**
    * Persists contact fields via `PATCH /api/members/[id]`.
-   */
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   async function save() {
     setSaving(true);
     try {
@@ -101,7 +121,9 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
 
   /**
    * Submits a self-service retake — stays pending until staff approve/reject.
-   */
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   async function savePhoto() {
     if (!photoDraft) return;
     setSavingPhoto(true);
@@ -125,7 +147,9 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
 
   /**
    * Places this member on the volunteer “waiting to enter” list.
-   */
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   async function requestCheckIn() {
     setCheckInBusy(true);
     try {
@@ -144,7 +168,9 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
 
   /**
    * Removes this member from the waiting list.
-   */
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   async function cancelCheckIn() {
     setCheckInBusy(true);
     try {
@@ -160,7 +186,9 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
 
   /**
    * Downloads the QR canvas as a PNG named after the member.
-   */
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
   function downloadQr() {
     const canvas = qrWrapRef.current?.querySelector("canvas");
     if (!canvas) return;

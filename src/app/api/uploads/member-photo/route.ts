@@ -4,6 +4,8 @@
  * Staff-only endpoint used during registration before a member row exists.
  * Accepts multipart `file`, writes it under private `storage/members/`, and
  * returns `{ photoUrl }` as the **storage filename** for `POST /api/members`.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { withRole } from "@/lib/auth/api";
@@ -18,6 +20,8 @@ import { scheduleOrphanRegistrationPhotoSweep } from "@/lib/uploads/orphanPhotos
  * Handles multipart photo upload for new member registration.
  *
  * @returns `201` with `{ photoUrl }` (on-disk filename) on success
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export const POST = withRole(
   ["VOLUNTEER", "ADMIN"],
