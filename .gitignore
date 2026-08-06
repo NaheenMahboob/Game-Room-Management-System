@@ -55,3 +55,7 @@ next-env.d.ts
 /storage/members/*
 !/storage/members/.gitkeep
 !/storage/members/placeholder.jpg
+
+# Full backup bundles (SQL + photos + .env) — keep private; never commit
+/backups/*
+!/backups/.gitkeep

@@ -46,8 +46,8 @@ Keep these current when behavior or setup changes.
 ## Features
 
 - **Public status board** — occupancy and per-unit equipment availability for a wall / TV display
-- **Member portal** — self-register, “I’m here” check-in request, profile + photo, QR membership card, visit/loan history, announcements
-- **Volunteer kiosk** — waiting-to-enter list, QR sign-in & sign-out, desk registration, borrow/return, guest passes, pending photo approvals, shift checklist
+- **Member portal** — self-register (email format + MX / disposable checks; no outbound mail), “I’m here” check-in request, profile + photo, QR membership card, visit/loan history, announcements
+- **Volunteer kiosk** — waiting-to-enter list, QR sign-in & sign-out, desk registration (same email domain checks when an address is entered), borrow/return, guest passes, pending photo approvals, shift checklist
 - **Admin suite** — inventory, users, shifts, announcements/events, analytics charts, CSV reports, settings, append-only audit log
 - **RBAC** — MEMBER / VOLUNTEER / ADMIN with middleware and API guards
 - **Offline PWA** — volunteer dashboard queues key actions when Wi‑Fi drops
@@ -102,9 +102,10 @@ Prisma Client is generated into `src/generated/prisma` (gitignored). `postinstal
 |----------|----------|--------|
 | `DATABASE_URL` | yes | Postgres connection string |
 | `JWT_SECRET` | yes | ≥ 32 characters; never commit real secrets |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | seed | Bootstrap admin (+ member profile) |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | seed | Bootstrap admin (+ member profile). Only this account may change other ADMIN roles. |
 | `VOLUNTEER_EMAIL` / `VOLUNTEER_PASSWORD` | seed | Demo volunteer |
 | `MEMBER_EMAIL` / `MEMBER_PASSWORD` | seed | Demo member |
+| `EMAIL_MX_CHECK` | no | Set `false` to skip MX DNS on self-register (offline CI). `.local` domains are always skipped. |
 
 See [`.env.example`](.env.example) for the full template. Do not commit `.env`.
 
@@ -116,9 +117,47 @@ See [`.env.example`](.env.example) for the full template. Do not commit `.env`.
 | `npm run db:migrate` | Prisma migrate (dev) |
 | `npm run db:seed` | Seed admin, volunteer, member + 46 equipment items |
 | `npm run db:studio` | Prisma Studio |
+| `npm run db:backup` | Full backup bundle: SQL + photos + `.env` under `./backups/` |
 | `npm run build` | Production build (Prisma Client + service worker) |
 | `npm run start` | Run production server |
 | `npm run lint` | ESLint |
+
+### Backups (database + photos + env)
+
+With Docker Postgres running (`npm run db:up`):
+
+```bash
+npm run db:backup
+```
+
+Creates a timestamped folder:
+
+```text
+backups/gameroom-YYYYMMDD-HHMMSS/
+  database.sql          # Postgres dump
+  storage/members/      # Profile photos (names match DB photoUrl)
+  .env                  # Secrets — do not share or commit
+  RESTORE.txt           # Short restore steps
+```
+
+Everything under `backups/` is gitignored.
+
+**Same machine for app + DB:** local backups alone are not enough if the disk fails. After each run (or via the scheduler), copy the new `backups/gameroom-*` folder to another disk, USB, or NAS. Optional env var:
+
+```bash
+# Windows PowerShell example (USB drive)
+$env:BACKUP_COPY_TO="E:\grms-backups"; npm run db:backup
+```
+
+Or set `BACKUP_COPY_TO` permanently in the Task Scheduler / cron environment.
+
+Schedule `npm run db:backup` (from the project directory):
+
+- **Windows** — Task Scheduler  
+- **macOS** — `launchd`  
+- **Linux** — cron, e.g. `0 2 * * * cd /path/to/repo && npm run db:backup`
+
+Restore outline: put `.env` and `storage/members` back, then load `database.sql` into Postgres (see `RESTORE.txt` inside each bundle). Production can still use managed Postgres snapshots when available.
 
 ## Usage
 
@@ -171,7 +210,7 @@ Change these passwords before any real deployment.
 | Pending member photo approval queue | — | — | yes | yes |
 | Inventory, users, analytics, audit, settings, shifts, content | — | — | — | yes |
 
-\*Staff with a linked member profile can also use the member portal.
+\*Staff with a linked member profile can also use the member portal. Only the bootstrap admin (`ADMIN_EMAIL`) can change another ADMIN’s role; other admins may manage members/volunteers and promote to admin.
 
 JWT cookies: `grms_access` (~1h), `grms_refresh` (~7d). Middleware guards `/portal/*`, `/dashboard/*`, and `/dashboard/admin/*`. Forced password change applies when `mustChangePassword` is set (desk register / admin reset).
 
