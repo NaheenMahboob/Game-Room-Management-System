@@ -17,12 +17,16 @@ import { deleteOrphanRegistrationPhoto } from "@/lib/uploads/memberPhoto";
 /**
  * Desk identify: without `q`, returns waiting + inside members;
  * with `q`, searches within that roster.
+ *
+ * @author Muhammad Naheen Mahboob
  */
 export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
   try {
     const { searchParams } = new URL(request.url);
+    // Empty `?q=` from the UI must not fail Zod min(1) — treat as “list all”.
+    const qRaw = searchParams.get("q")?.trim();
     const parsed = memberSearchSchema.parse({
-      q: searchParams.get("q") ?? undefined,
+      q: qRaw ? qRaw : undefined,
       limit: searchParams.get("limit") ?? undefined,
     });
     const members = parsed.q

@@ -4,6 +4,8 @@
  * Public member self-registration. Creates a PENDING account until staff
  * verifies the uploaded profile photo at the desk.
  * If create fails after the photo was uploaded, the orphan `self-*` file is removed.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -21,6 +23,8 @@ import {
  * Best-effort client IP from proxy headers or the socket address.
  *
  * @param request - Incoming Next.js request
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 function clientIp(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -30,6 +34,8 @@ function clientIp(request: NextRequest): string {
 
 /**
  * Registers a new member with chosen password; account stays PENDING.
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 export async function POST(request: NextRequest) {
   let uploadedPhotoUrl: string | undefined;
