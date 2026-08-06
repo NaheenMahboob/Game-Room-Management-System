@@ -1,6 +1,9 @@
 /**
  * Admin equipment catalog API.
  * CRUD for equipment items, types, condition, and active flag.
+ * Deactivate / hard-delete are blocked while an item has an open loan.
+ *
+ * @author Muhammad Naheen Mahboob
  */
 
 import { z } from "zod";
@@ -9,7 +12,11 @@ import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 
-/** Allowed equipment catalog types. */
+/**
+ * Allowed equipment catalog types.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 const equipmentTypeEnum = z.enum([
   "PS5_CONSOLE",
   "PS5_CONTROLLER",
@@ -21,7 +28,11 @@ const equipmentTypeEnum = z.enum([
   "AIR_HOCKEY",
 ]);
 
-/** Request body for creating an equipment item. */
+/**
+ * Request body for creating an equipment item.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 const createSchema = z.object({
   type: equipmentTypeEnum,
   label: z.string().trim().min(2).max(120),
@@ -31,7 +42,11 @@ const createSchema = z.object({
     .default("GOOD"),
 });
 
-/** Request body for updating an equipment item by id. */
+/**
+ * Request body for updating an equipment item by id.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 const updateSchema = z.object({
   id: z.string().cuid(),
   label: z.string().trim().min(2).max(120).optional(),
@@ -40,12 +55,17 @@ const updateSchema = z.object({
   type: equipmentTypeEnum.optional(),
 });
 
-/** Lists equipment with optional active-loan context. */
+/**
+ * Lists equipment with optional active-loan context.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 export const GET = withRole(["ADMIN"], async () => {
   try {
     const equipment = await prisma.equipment.findMany({
       orderBy: [{ type: "asc" }, { label: "asc" }],
       include: {
+        // One open loan is enough for the inventory UI “with …” label.
         loans: {
           where: { returnedAt: null },
           include: { member: { select: { fullName: true } } },
@@ -59,7 +79,11 @@ export const GET = withRole(["ADMIN"], async () => {
   }
 });
 
-/** Creates a new equipment catalog entry. */
+/**
+ * Creates a new equipment catalog entry.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 export const POST = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const body = createSchema.parse(await request.json());
@@ -76,11 +100,30 @@ export const POST = withRole(["ADMIN"], async ({ request, session }) => {
   }
 });
 
-/** Updates label, type, condition, or active flag for one item. */
+/**
+ * Updates label, type, condition, or active flag for one item.
+ * Refuses to deactivate while the item is still on loan.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const body = updateSchema.parse(await request.json());
     const { id, ...data } = body;
+
+    // Deactivating while loaned out would strand the borrower in the desk UI.
+    if (data.isActive === false) {
+      const activeLoan = await prisma.loan.findFirst({
+        where: { equipmentId: id, returnedAt: null },
+      });
+      if (activeLoan) {
+        return jsonError(
+          "Cannot deactivate equipment with an active loan",
+          409
+        );
+      }
+    }
+
     const equipment = await prisma.equipment.update({ where: { id }, data });
     await writeAuditLog({
       actionType: "EQUIPMENT_UPDATED",
@@ -94,7 +137,12 @@ export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
   }
 });
 
-/** Soft-deactivates or hard-deletes equipment (`hard=true` query). */
+/**
+ * Soft-deactivates or hard-deletes equipment (`hard=true` query).
+ * Both paths require no open loan.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 export const DELETE = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const id = new URL(request.url).searchParams.get("id");
@@ -107,7 +155,7 @@ export const DELETE = withRole(["ADMIN"], async ({ request, session }) => {
       return jsonError("Cannot delete equipment with an active loan", 409);
     }
 
-    // Soft-delete preferred: deactivate. Hard delete if requested via hard=true
+    // Soft-delete preferred: deactivate. Hard delete if requested via hard=true.
     const hard = new URL(request.url).searchParams.get("hard") === "true";
     if (hard) {
       await prisma.equipment.delete({ where: { id } });
