@@ -1,22 +1,31 @@
 "use client";
 
 /**
- * Public member self-registration (password + photo). Account stays PENDING
- * until a volunteer/admin verifies the photo at the desk.
+ * Public member self-registration (password + photo + email checks).
+ * Account stays PENDING until a volunteer/admin verifies the photo at the desk.
+ *
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
  */
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { uploadMemberPhotoDataUrl } from "@/lib/uploads/client";
 import { PhotoCapture } from "@/components/dashboard/PhotoCapture";
 import { SignaturePad } from "@/components/dashboard/SignaturePad";
+import { PasswordField } from "@/components/auth/PasswordField";
 
+/**
+ * Self-service registration page: uploads photo first, then creates a PENDING member.
+ *
+ * @author Muhammad Naheen Mahboob
+ * @author Mashrur Khandaker
+ */
 export default function PortalRegisterPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // data: URL preview until upload returns a storage filename.
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [signature, setSignature] = useState("");
   const [form, setForm] = useState({
@@ -31,6 +40,12 @@ export default function PortalRegisterPage() {
     parentalConsent: false,
   });
 
+  /**
+   * Validates required photo/waiver/password, uploads the image, then registers.
+   *
+   * @author Muhammad Naheen Mahboob
+   * @author Mashrur Khandaker
+   */
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -54,6 +69,7 @@ export default function PortalRegisterPage() {
 
     setLoading(true);
     try {
+      // Upload before create so the API stores only a private filename, not a data URL.
       const photoUrl = await uploadMemberPhotoDataUrl(
         photoPreview,
         "/api/uploads/registration-photo"
@@ -78,6 +94,7 @@ export default function PortalRegisterPage() {
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
+        // Surfaces MX / disposable / uniqueness errors from the API.
         setError(data.error ?? "Registration failed");
         return;
       }
@@ -89,6 +106,12 @@ export default function PortalRegisterPage() {
     }
   }
 
+  /**
+   * Renders a labeled controlled input bound to one form field.
+   *
+   * @author Muhammad Naheen Mahboob
+   * @author Mashrur Khandaker
+   */
   function field(
     key: keyof typeof form,
     label: string,
@@ -154,8 +177,22 @@ export default function PortalRegisterPage() {
           {field("dateOfBirth", "Date of birth", "date", false)}
           {field("emergencyContactName", "Emergency contact name *")}
           {field("emergencyContactPhone", "Emergency contact phone *", "tel")}
-          {field("password", "Password *", "password")}
-          {field("confirmPassword", "Confirm password *", "password")}
+          <PasswordField
+            label="Password *"
+            value={form.password}
+            onChange={(password) => setForm((f) => ({ ...f, password }))}
+            autoComplete="new-password"
+            minLength={8}
+          />
+          <PasswordField
+            label="Confirm password *"
+            value={form.confirmPassword}
+            onChange={(confirmPassword) =>
+              setForm((f) => ({ ...f, confirmPassword }))
+            }
+            autoComplete="new-password"
+            minLength={8}
+          />
         </div>
 
         <PhotoCapture value={photoPreview} onChange={setPhotoPreview} />

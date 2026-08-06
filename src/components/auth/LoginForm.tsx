@@ -1,12 +1,26 @@
 "use client";
 
+/**
+ * Email/password login form for the member portal and staff dashboard.
+ * Redirects to change-password when the account was flagged for reset.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
+
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { PasswordField } from "@/components/auth/PasswordField";
 
+/** Which surface the form authenticates against (cookie + redirect context). */
 type Portal = "member" | "dashboard";
 
+/**
+ * Props for {@link LoginForm}.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 type LoginFormProps = {
   portal: Portal;
   title: string;
@@ -17,6 +31,8 @@ type LoginFormProps = {
 /**
  * Email/password login. Redirects to change-password when the account was
  * flagged for reset (members, volunteers, and admins).
+ *
+ * @author Muhammad Naheen Mahboob
  */
 export function LoginForm({
   portal,
@@ -31,6 +47,11 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Posts credentials to `/api/auth/login` and routes on success.
+   *
+   * @author Muhammad Naheen Mahboob
+   */
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
@@ -53,6 +74,7 @@ export function LoginForm({
         return;
       }
 
+      // Desk/admin resets set mustChangePassword — block normal landing until updated.
       if (data.user?.mustChangePassword) {
         const dest =
           portal === "member"
@@ -90,19 +112,12 @@ export function LoginForm({
           />
         </label>
 
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-slate-300">
-            {t("password")}
-          </span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none ring-emerald-500/40 focus:ring-2"
-          />
-        </label>
+        <PasswordField
+          label={t("password")}
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+        />
 
         {error ? (
           <p className="rounded-lg border border-red-500/40 bg-red-950/50 px-3 py-2 text-sm text-red-200">

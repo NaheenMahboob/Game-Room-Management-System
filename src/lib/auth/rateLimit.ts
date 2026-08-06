@@ -18,7 +18,7 @@ type RateBucket = {
 };
 
 /** Max failed attempts allowed per key within one window. */
-export const LOGIN_RATE_LIMIT_MAX = 5;
+export const LOGIN_RATE_LIMIT_MAX = 15;
 
 /** Window length for login attempts (15 minutes). */
 export const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;

@@ -3,11 +3,19 @@
 /**
  * Shared change-password form for portal and dashboard.
  * Used after admin password reset for members, volunteers, and admins.
+ *
+ * @author Muhammad Naheen Mahboob
  */
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PasswordField } from "@/components/auth/PasswordField";
 
+/**
+ * Props for {@link ChangePasswordForm}.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 type ChangePasswordFormProps = {
   /** Where to send the user after a successful change (fallback if API omits redirect). */
   fallbackRedirect: string;
@@ -15,8 +23,12 @@ type ChangePasswordFormProps = {
 
 /**
  * Collects current + new password and posts to `/api/auth/change-password`.
+ *
+ * @author Muhammad Naheen Mahboob
  */
-export function ChangePasswordForm({ fallbackRedirect }: ChangePasswordFormProps) {
+export function ChangePasswordForm({
+  fallbackRedirect,
+}: ChangePasswordFormProps) {
   const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -24,9 +36,16 @@ export function ChangePasswordForm({ fallbackRedirect }: ChangePasswordFormProps
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Validates match/length client-side, then persists the new password.
+   *
+   * @author Muhammad Naheen Mahboob
+   */
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // Cheap client checks before hitting the API (API still enforces).
     if (newPassword !== confirm) {
       setError("New passwords do not match");
       return;
@@ -51,6 +70,7 @@ export function ChangePasswordForm({ fallbackRedirect }: ChangePasswordFormProps
         setError(data.error ?? "Could not change password");
         return;
       }
+      // API may send role-specific landing; otherwise use the page's fallback.
       router.push(data.redirectTo ?? fallbackRedirect);
       router.refresh();
     } catch {
@@ -66,53 +86,32 @@ export function ChangePasswordForm({ fallbackRedirect }: ChangePasswordFormProps
         Set a new password
       </h1>
       <p className="mt-2 text-sm text-slate-400">
-        Your account requires a password update before you can continue.
-        Use the temporary password from your admin if you were reset, then
-        choose a new one.
+        Your account requires a password update before you can continue. Use
+        the temporary password from your admin if you were reset, then choose a
+        new one.
       </p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-slate-300">
-            Current password
-          </span>
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2.5"
-          />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-slate-300">
-            New password
-          </span>
-          <input
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2.5"
-          />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-slate-300">
-            Confirm new password
-          </span>
-          <input
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            className="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2.5"
-          />
-        </label>
+        <PasswordField
+          label="Current password"
+          value={currentPassword}
+          onChange={setCurrentPassword}
+          autoComplete="current-password"
+        />
+        <PasswordField
+          label="New password"
+          value={newPassword}
+          onChange={setNewPassword}
+          autoComplete="new-password"
+          minLength={8}
+        />
+        <PasswordField
+          label="Confirm new password"
+          value={confirm}
+          onChange={setConfirm}
+          autoComplete="new-password"
+          minLength={8}
+        />
         {error ? (
           <p className="rounded-lg border border-red-500/40 bg-red-950/50 px-3 py-2 text-sm text-red-200">
             {error}
