@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Canvas + optional typed-name signature capture for waiver PDFs.
+ * Uses dark ink on a white pad so the stamped PNG is readable on paper-like PDFs.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
+
 import { useRef, useState } from "react";
 
 type SignaturePadProps = {
@@ -10,6 +17,14 @@ export function SignaturePad({ onChange }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [typed, setTyped] = useState("");
+
+  function fillWhite() {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
 
   function getPos(e: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current!;
@@ -22,12 +37,17 @@ export function SignaturePad({ onChange }: SignaturePadProps) {
 
   function start(e: React.PointerEvent<HTMLCanvasElement>) {
     drawing.current = true;
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    // First stroke: ensure opaque white background for PDF embedding.
+    const sample = ctx.getImageData(0, 0, 1, 1).data;
+    if (sample[3] === 0) fillWhite();
     const { x, y } = getPos(e);
-    ctx.strokeStyle = "#e2e8f0";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     ctx.beginPath();
     ctx.moveTo(x, y);
   }
@@ -45,6 +65,7 @@ export function SignaturePad({ onChange }: SignaturePadProps) {
     drawing.current = false;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    setTyped("");
     onChange(canvas.toDataURL("image/png"));
   }
 
@@ -53,6 +74,7 @@ export function SignaturePad({ onChange }: SignaturePadProps) {
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    fillWhite();
     setTyped("");
     onChange("");
   }
@@ -64,7 +86,7 @@ export function SignaturePad({ onChange }: SignaturePadProps) {
         ref={canvasRef}
         width={600}
         height={180}
-        className="h-40 w-full touch-none rounded-xl border border-slate-600 bg-slate-950"
+        className="h-40 w-full touch-none rounded-xl border border-slate-600 bg-white"
         onPointerDown={start}
         onPointerMove={move}
         onPointerUp={end}
@@ -80,7 +102,7 @@ export function SignaturePad({ onChange }: SignaturePadProps) {
         </button>
       </div>
       <label className="block space-y-1">
-        <span className="text-sm text-slate-400">Or type full name</span>
+        <span className="text-sm text-slate-400">Or type full legal name</span>
         <input
           value={typed}
           onChange={(e) => {

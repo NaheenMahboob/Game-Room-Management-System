@@ -40,18 +40,34 @@ const DEFAULT_WAIVER_TEXT = `
 COMMUNITY GAME ROOM LIABILITY WAIVER AND RELEASE
 
 By signing this waiver, I acknowledge that I am voluntarily participating in activities
-at the community game room. I understand that use of gaming equipment and recreational
-tables involves inherent risks.
+at the community game room operated in association with the mosque. I understand that use
+of gaming equipment, consoles, controllers, and recreational tables involves inherent risks
+of injury, property damage, and loss of personal belongings.
 
-I agree to follow all community rules, treat equipment with care, and accept responsibility
-for any damage caused by misuse. I release the mosque, its volunteers, and staff from
-liability for injuries or losses arising from ordinary use of the facilities, to the fullest
-extent permitted by law.
+ASSUMPTION OF RISK AND RELEASE OF LIABILITY
+I assume all risks associated with participation. To the fullest extent permitted by law,
+I release and hold harmless the mosque, its officers, employees, volunteers, agents, and
+affiliates from any and all claims, liabilities, damages, costs, or expenses arising from
+my presence in or use of the game room and its equipment, including personal injury or
+loss of personal property, except to the extent caused by gross negligence or willful
+misconduct as determined by a court of competent jurisdiction.
 
-For participants under 18 years of age, a parent or legal guardian must sign this waiver
-and provide parental consent before the minor may sign in to the game room.
+EQUIPMENT DAMAGE AND FINANCIAL RESPONSIBILITY
+I agree to follow all community rules and to treat equipment and facilities with care. I
+accept full financial responsibility for the repair or replacement cost of any equipment,
+furniture, or property that is lost, stolen, or damaged through my misuse, negligence, or
+willful misconduct (or that of any guest I host). Payment is due as directed by game room
+or mosque administration.
 
-Version 1 — Community Game Room
+PARTICIPANTS UNDER 18
+If the participant is under 18 years of age, a parent or legal guardian must read and sign
+this waiver, provide parental consent before the minor may sign in, and agrees to pay for
+any equipment or property damage caused by the minor as described above.
+
+I have read this waiver, understand it, and sign it voluntarily. A signed PDF copy will be
+retained with my membership record.
+
+Version 2 — Community Game Room
 `.trim();
 
 const OPENING_HOURS = {
@@ -99,7 +115,7 @@ async function main() {
       membershipStatus: "ACTIVE",
       waiverSigned: true,
       waiverSignedAt: new Date(),
-      waiverVersion: 1,
+      waiverVersion: 2,
       parentalConsent: true,
       registeredByUserId: admin.id,
     },
@@ -114,7 +130,7 @@ async function main() {
       membershipStatus: "ACTIVE",
       waiverSigned: true,
       waiverSignedAt: new Date(),
-      waiverVersion: 1,
+      waiverVersion: 2,
       parentalConsent: true,
       qrPayload: "m_bootstrap_admin",
       registeredByUserId: admin.id,
@@ -154,7 +170,7 @@ async function main() {
       membershipStatus: "ACTIVE",
       waiverSigned: true,
       waiverSignedAt: new Date(),
-      waiverVersion: 1,
+      waiverVersion: 2,
       parentalConsent: true,
       registeredByUserId: admin.id,
     },
@@ -169,7 +185,7 @@ async function main() {
       membershipStatus: "ACTIVE",
       waiverSigned: true,
       waiverSignedAt: new Date(),
-      waiverVersion: 1,
+      waiverVersion: 2,
       parentalConsent: true,
       qrPayload: "m_demo_volunteer",
       registeredByUserId: admin.id,
@@ -206,7 +222,7 @@ async function main() {
       membershipStatus: "ACTIVE",
       waiverSigned: true,
       waiverSignedAt: new Date(),
-      waiverVersion: 1,
+      waiverVersion: 2,
       parentalConsent: true,
       registeredByUserId: admin.id,
     },
@@ -222,7 +238,7 @@ async function main() {
       membershipStatus: "ACTIVE",
       waiverSigned: true,
       waiverSignedAt: new Date(),
-      waiverVersion: 1,
+      waiverVersion: 2,
       parentalConsent: true,
       qrPayload: `m_demo_member`,
       registeredByUserId: admin.id,
@@ -252,7 +268,7 @@ async function main() {
     { key: "openingHours", value: JSON.stringify(OPENING_HOURS) },
     { key: "maxSessionDuration", value: "120" },
     { key: "guestLimit", value: "2" },
-    { key: "waiverVersion", value: "1" },
+    { key: "waiverVersion", value: "2" },
     { key: "autoMinorIssueOnNotes", value: "true" },
     {
       key: "communityRules",
@@ -290,19 +306,19 @@ async function main() {
   console.log(`Settings upserted: ${settings.length}`);
 
   await prisma.waiver.upsert({
-    where: { version: 1 },
+    where: { version: 2 },
     update: {
       text: DEFAULT_WAIVER_TEXT,
       createdByUserId: admin.id,
     },
     create: {
-      version: 1,
+      version: 2,
       text: DEFAULT_WAIVER_TEXT,
       createdByUserId: admin.id,
     },
   });
 
-  console.log("Waiver version 1 ready");
+  console.log("Waiver version 2 ready");
 
   const existingAnnouncement = await prisma.announcement.findFirst({
     where: { title: "Welcome to the Game Room" },

@@ -89,6 +89,10 @@ model Member {
   waiverSigned           Boolean          @default(false)
   waiverSignedAt         DateTime?
   waiverVersion          Int              @default(0)
+  // On-disk filename under storage/waivers/ (signed PDF), never a public URL.
+  waiverPdfUrl           String?
+  // SHA-256 hex of the stored PDF bytes for integrity checks.
+  waiverPdfSha256        String?
   parentalConsent        Boolean          @default(false)
   qrPayload              String           @unique
   registeredByUserId     String

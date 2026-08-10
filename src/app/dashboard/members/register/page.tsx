@@ -16,6 +16,7 @@ import { uploadMemberPhotoDataUrl } from "@/lib/uploads/client";
 import { useToast } from "@/components/ui/Toast";
 import { PhotoCapture } from "@/components/dashboard/PhotoCapture";
 import { SignaturePad } from "@/components/dashboard/SignaturePad";
+import { WaiverAgreement } from "@/components/dashboard/WaiverAgreement";
 
 /**
  * Multi-step registration UI: details → photo → waiver → credentials panel.
@@ -208,6 +209,7 @@ export default function RegisterMemberPage() {
       </div>
 
       <PhotoCapture value={photoPreview} onChange={setPhotoPreview} />
+      <WaiverAgreement />
       <SignaturePad onChange={setSignature} />
 
       <label className="flex min-h-12 items-center gap-3">
@@ -218,7 +220,10 @@ export default function RegisterMemberPage() {
             setForm((f) => ({ ...f, parentalConsent: e.target.checked }))
           }
         />
-        <span>Parental consent provided (required for under 18)</span>
+        <span>
+          Parent/guardian consent provided (required under 18 — guardian must
+          sign and accepts payment responsibility for broken equipment)
+        </span>
       </label>
 
       <button

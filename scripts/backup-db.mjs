@@ -5,6 +5,7 @@
  * Creates `backups/gameroom-YYYYMMDD-HHMMSS/` containing:
  *   - database.sql       (Postgres dump via Docker `pg_dump`)
  *   - storage/members/   (member photos; filenames match DB `photoUrl`)
+ *   - storage/waivers/   (signed waiver PDFs; filenames match DB `waiverPdfUrl`)
  *   - .env               (secrets — keep this folder private)
  *   - RESTORE.txt        (human restore steps)
  *
@@ -32,6 +33,8 @@ const root = path.resolve(__dirname, "..");
 const backupsDir = path.join(root, "backups");
 /** Live member photo directory mirrored into each bundle. */
 const membersSrc = path.join(root, "storage", "members");
+/** Live signed waiver PDF directory mirrored into each bundle. */
+const waiversSrc = path.join(root, "storage", "waivers");
 /** Live env file copied into each bundle (never commit bundles). */
 const envSrc = path.join(root, ".env");
 
@@ -124,17 +127,19 @@ function writeRestoreNotes(bundleDir) {
 Created: ${new Date().toISOString()}
 
 Contents
-- database.sql     Postgres dump (schema + data)
-- storage/members  Photo files referenced by Member.photoUrl
-- .env             App secrets (DATABASE_URL, JWT_SECRET, …) — keep private
+- database.sql      Postgres dump (schema + data)
+- storage/members   Photo files referenced by Member.photoUrl
+- storage/waivers   Signed waiver PDFs referenced by Member.waiverPdfUrl
+- .env              App secrets (DATABASE_URL, JWT_SECRET, …) — keep private
 
 Restore (same machine, Docker Postgres up)
 1. Copy .env back to the project root if needed.
 2. Copy storage/members/* into the project's storage/members/.
-3. Restore the database, e.g.:
+3. Copy storage/waivers/* into the project's storage/waivers/.
+4. Restore the database, e.g.:
    docker compose exec -T db psql -U gameroom -d gameroom < database.sql
    (On Windows PowerShell you may need: Get-Content database.sql | docker compose exec -T db psql -U gameroom -d gameroom)
-4. Restart the app (npm run start / npm run dev).
+5. Restart the app (npm run start / npm run dev).
 
 Off-site
 Copy this whole folder to another disk/USB/NAS regularly. App + DB on one
@@ -159,7 +164,7 @@ function main() {
 
   // --- 1) Database dump ---
   console.log(
-    `1/3 Database (${POSTGRES_DB}) via docker compose service "${COMPOSE_SERVICE}"…`
+    `1/4 Database (${POSTGRES_DB}) via docker compose service "${COMPOSE_SERVICE}"…`
   );
   const result = dockerComposeDump();
   if (result.error) {
@@ -185,14 +190,19 @@ function main() {
   fs.writeFileSync(sqlPath, sql);
   console.log(`   Wrote database.sql (${sql.length} bytes)`);
 
-  // --- 2) Photos (must stay with SQL so photoUrl filenames resolve) ---
-  console.log("2/3 Member photos (storage/members)…");
+  // --- 2) Photos + signed waivers (must stay with SQL so filenames resolve) ---
+  console.log("2/4 Member photos (storage/members)…");
   const photoDest = path.join(bundleDir, "storage", "members");
   const photoInfo = copyDirOrEmpty(membersSrc, photoDest);
   console.log(`   Copied photo directory (${photoInfo.files} entries)`);
 
-  // --- 3) Secrets ---
-  console.log("3/3 Environment file (.env)…");
+  console.log("3/4 Signed waivers (storage/waivers)…");
+  const waiverDest = path.join(bundleDir, "storage", "waivers");
+  const waiverInfo = copyDirOrEmpty(waiversSrc, waiverDest);
+  console.log(`   Copied waiver directory (${waiverInfo.files} entries)`);
+
+  // --- 4) Secrets ---
+  console.log("4/4 Environment file (.env)…");
   const envDest = path.join(bundleDir, ".env");
   if (fs.existsSync(envSrc)) {
     fs.copyFileSync(envSrc, envDest);

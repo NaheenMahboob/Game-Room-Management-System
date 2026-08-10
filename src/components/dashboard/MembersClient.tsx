@@ -43,6 +43,7 @@ type MemberDetail = MemberHit & {
   email: string | null;
   waiverSigned: boolean;
   waiverVersion: number;
+  waiverPdfUrl?: string | null;
   parentalConsent: boolean;
   pendingPhotoUrl?: string | null;
   attendances: { id: string; signInTime: string }[];
@@ -444,6 +445,25 @@ export function MembersClient() {
               <p className="text-sm text-slate-400">
                 Emergency: {selected.emergencyContactName} ·{" "}
                 {selected.emergencyContactPhone}
+              </p>
+              <p className="text-sm text-slate-400">
+                Waiver:{" "}
+                {selected.waiverSigned
+                  ? `signed (v${selected.waiverVersion})`
+                  : "not signed"}
+                {selected.waiverPdfUrl ? (
+                  <>
+                    {" · "}
+                    <a
+                      href={`/api/members/${selected.id}/waiver`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-emerald-400 underline"
+                    >
+                      Open signed PDF
+                    </a>
+                  </>
+                ) : null}
               </p>
               <p className="text-sm">
                 Status:{" "}

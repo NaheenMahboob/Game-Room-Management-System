@@ -56,6 +56,10 @@ next-env.d.ts
 !/storage/members/.gitkeep
 !/storage/members/placeholder.jpg
 
+# private signed waiver PDFs (outside public/)
+/storage/waivers/*
+!/storage/waivers/.gitkeep
+
 # Full backup bundles (SQL + photos + .env) — keep private; never commit
 /backups/*
 !/backups/.gitkeep

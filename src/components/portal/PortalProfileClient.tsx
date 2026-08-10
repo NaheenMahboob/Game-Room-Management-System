@@ -30,6 +30,9 @@ type Member = {
   qrPayload: string;
   membershipStatus: string;
   checkInRequestedAt?: string | null;
+  waiverSigned?: boolean;
+  waiverVersion?: number;
+  waiverPdfUrl?: string | null;
   attendances?: { id: string }[];
 };
 
@@ -220,6 +223,21 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
         <div>
           <h1 className="text-3xl font-semibold">{member.fullName}</h1>
           <p className="text-slate-400">{member.membershipStatus}</p>
+          {member.waiverPdfUrl ? (
+            <p className="mt-1 text-sm">
+              <a
+                href={`/api/members/${member.id}/waiver`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-emerald-400 underline"
+              >
+                View signed waiver PDF
+                {member.waiverVersion != null
+                  ? ` (v${member.waiverVersion})`
+                  : ""}
+              </a>
+            </p>
+          ) : null}
           {member.pendingPhotoUrl ? (
             <p className="mt-2 rounded-xl border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
               A new photo is awaiting volunteer approval. Your current photo is

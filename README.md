@@ -122,7 +122,7 @@ See [`.env.example`](.env.example) for the full template. Do not commit `.env`.
 | `npm run start` | Run production server |
 | `npm run lint` | ESLint |
 
-### Backups (database + photos + env)
+### Backups (database + photos + waivers + env)
 
 With Docker Postgres running (`npm run db:up`):
 
@@ -136,6 +136,7 @@ Creates a timestamped folder:
 backups/gameroom-YYYYMMDD-HHMMSS/
   database.sql          # Postgres dump
   storage/members/      # Profile photos (names match DB photoUrl)
+  storage/waivers/      # Signed waiver PDFs (names match DB waiverPdfUrl)
   .env                  # Secrets — do not share or commit
   RESTORE.txt           # Short restore steps
 ```
@@ -157,7 +158,7 @@ Schedule `npm run db:backup` (from the project directory):
 - **macOS** — `launchd`  
 - **Linux** — cron, e.g. `0 2 * * * cd /path/to/repo && npm run db:backup`
 
-Restore outline: put `.env` and `storage/members` back, then load `database.sql` into Postgres (see `RESTORE.txt` inside each bundle). Production can still use managed Postgres snapshots when available.
+Restore outline: put `.env`, `storage/members`, and `storage/waivers` back, then load `database.sql` into Postgres (see `RESTORE.txt` inside each bundle). Production can still use managed Postgres snapshots when available.
 
 ## Usage
 
@@ -195,6 +196,7 @@ Change these passwords before any real deployment.
 │   ├── middleware.ts   # route guards
 │   └── types/          # ambient type declarations
 ├── storage/members/    # private member photos (local disk)
+├── storage/waivers/    # private signed waiver PDFs (local disk)
 ├── docker-compose.yml  # local Postgres
 └── .env.example        # env template
 ```
@@ -263,7 +265,7 @@ Serve over HTTPS behind a reverse proxy (Caddy/Nginx) on port 3000. Local Postgr
 - [ ] Run `prisma migrate deploy` before first traffic
 - [ ] Change default admin / volunteer / member passwords
 - [ ] Confirm the volunteer tablet can install the PWA over HTTPS
-- [ ] Confirm `storage/members/` (or your photo storage) is writable and not publicly browsable
+- [ ] Confirm `storage/members/` and `storage/waivers/` are writable and not publicly browsable
 
 ## Troubleshooting
 

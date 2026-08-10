@@ -18,6 +18,8 @@ import {
   deleteMemberPhotoIfStored,
   withClientPhotoUrl,
 } from "@/lib/uploads/memberPhoto";
+import { deleteMemberWaiverIfStored } from "@/lib/uploads/memberWaiver";
+import { createAndStoreSignedWaiverPdf } from "@/lib/waivers/signedPdf";
 import type { z } from "zod";
 import type {
   registerMemberSchema,
@@ -178,66 +180,89 @@ export async function registerMember(
   // Unique QR payload for the membership card / desk scanner.
   const qrPayload = generateQrPayload();
 
-  const result = await prisma.$transaction(
-    async (tx: Prisma.TransactionClient) => {
-      const user = await tx.user.create({
-        data: {
-          email,
-          passwordHash,
-          role: "MEMBER",
-          mustChangePassword: true,
-        },
-      });
+  const parentalConsent =
+    dob && isMinor(dob) ? input.parentalConsent : true;
+  const signedAt = new Date();
+  // Stamp signature onto the current waiver PDF before the DB row exists.
+  const signedWaiver = await createAndStoreSignedWaiverPdf({
+    fullName: input.fullName,
+    phone: input.phone,
+    email: providedEmail,
+    dateOfBirth: dob,
+    parentalConsent,
+    signature: input.waiverSignature,
+    waiverVersion,
+    signedAt,
+  });
 
-      const member = await tx.member.create({
-        data: {
-          userId: user.id,
-          fullName: input.fullName,
-          phone: input.phone,
-          email: input.email && input.email.length > 0 ? input.email : null,
-          emergencyContactName: input.emergencyContactName,
-          emergencyContactPhone: input.emergencyContactPhone,
-          photoUrl: input.photoUrl,
-          membershipStatus: "ACTIVE",
-          dateOfBirth: dob,
-          waiverSigned: true,
-          waiverSignedAt: new Date(),
-          waiverVersion,
-          parentalConsent: dob && isMinor(dob) ? input.parentalConsent : true,
-          qrPayload,
-          registeredByUserId,
-          approvedByUserId: registeredByUserId,
-          approvedAt: new Date(),
-          // Walk-up desk register: place them on the waiting list immediately.
-          checkInRequestedAt: new Date(),
-        },
-      });
-
-      await writeAuditLog(
-        {
-          actionType: AuditAction.MEMBER_REGISTERED,
-          performedByUserId: registeredByUserId,
-          memberId: member.id,
-          details: {
-            fullName: member.fullName,
-            phone: member.phone,
-            waiverVersion,
-            waiverSignature: input.waiverSignature,
-            source: "desk",
+  try {
+    const result = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const user = await tx.user.create({
+          data: {
+            email,
+            passwordHash,
+            role: "MEMBER",
+            mustChangePassword: true,
           },
-        },
-        tx
-      );
+        });
 
-      return { user, member };
-    }
-  );
+        const member = await tx.member.create({
+          data: {
+            userId: user.id,
+            fullName: input.fullName,
+            phone: input.phone,
+            email: input.email && input.email.length > 0 ? input.email : null,
+            emergencyContactName: input.emergencyContactName,
+            emergencyContactPhone: input.emergencyContactPhone,
+            photoUrl: input.photoUrl,
+            membershipStatus: "ACTIVE",
+            dateOfBirth: dob,
+            waiverSigned: true,
+            waiverSignedAt: signedAt,
+            waiverVersion: signedWaiver.version,
+            waiverPdfUrl: signedWaiver.filename,
+            waiverPdfSha256: signedWaiver.sha256,
+            parentalConsent,
+            qrPayload,
+            registeredByUserId,
+            approvedByUserId: registeredByUserId,
+            approvedAt: new Date(),
+            // Walk-up desk register: place them on the waiting list immediately.
+            checkInRequestedAt: new Date(),
+          },
+        });
 
-  return {
-    member: withClientPhotoUrl(result.member),
-    temporaryPassword: tempPassword,
-    loginEmail: email,
-  };
+        await writeAuditLog(
+          {
+            actionType: AuditAction.MEMBER_REGISTERED,
+            performedByUserId: registeredByUserId,
+            memberId: member.id,
+            details: {
+              fullName: member.fullName,
+              phone: member.phone,
+              waiverVersion: signedWaiver.version,
+              waiverPdfUrl: signedWaiver.filename,
+              waiverPdfSha256: signedWaiver.sha256,
+              source: "desk",
+            },
+          },
+          tx
+        );
+
+        return { user, member };
+      }
+    );
+
+    return {
+      member: withClientPhotoUrl(result.member),
+      temporaryPassword: tempPassword,
+      loginEmail: email,
+    };
+  } catch (error) {
+    await deleteMemberWaiverIfStored(signedWaiver.filename);
+    throw error;
+  }
 }
 
 /**
@@ -264,62 +289,85 @@ export async function selfRegisterMember(input: SelfRegisterInput) {
   const passwordHash = await hashPassword(input.password);
   const qrPayload = generateQrPayload();
 
-  const result = await prisma.$transaction(
-    async (tx: Prisma.TransactionClient) => {
-      const user = await tx.user.create({
-        data: {
-          email,
-          passwordHash,
-          role: "MEMBER",
-          mustChangePassword: false,
-        },
-      });
+  const parentalConsent =
+    dob && isMinor(dob) ? input.parentalConsent : true;
+  const signedAt = new Date();
+  const signedWaiver = await createAndStoreSignedWaiverPdf({
+    fullName: input.fullName,
+    phone: input.phone,
+    email,
+    dateOfBirth: dob,
+    parentalConsent,
+    signature: input.waiverSignature,
+    waiverVersion,
+    signedAt,
+  });
 
-      // Self-registered: registeredBy points at the new user until staff approves.
-      const member = await tx.member.create({
-        data: {
-          userId: user.id,
-          fullName: input.fullName,
-          phone: input.phone,
-          email,
-          emergencyContactName: input.emergencyContactName,
-          emergencyContactPhone: input.emergencyContactPhone,
-          photoUrl: input.photoUrl,
-          membershipStatus: "PENDING",
-          dateOfBirth: dob,
-          waiverSigned: true,
-          waiverSignedAt: new Date(),
-          waiverVersion,
-          parentalConsent: dob && isMinor(dob) ? input.parentalConsent : true,
-          qrPayload,
-          registeredByUserId: user.id,
-        },
-      });
-
-      await writeAuditLog(
-        {
-          actionType: AuditAction.MEMBER_REGISTERED,
-          performedByUserId: user.id,
-          memberId: member.id,
-          details: {
-            fullName: member.fullName,
-            phone: member.phone,
-            waiverVersion,
-            source: "self",
-            pendingPhotoVerification: true,
+  try {
+    const result = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const user = await tx.user.create({
+          data: {
+            email,
+            passwordHash,
+            role: "MEMBER",
+            mustChangePassword: false,
           },
-        },
-        tx
-      );
+        });
 
-      return { user, member };
-    }
-  );
+        // Self-registered: registeredBy points at the new user until staff approves.
+        const member = await tx.member.create({
+          data: {
+            userId: user.id,
+            fullName: input.fullName,
+            phone: input.phone,
+            email,
+            emergencyContactName: input.emergencyContactName,
+            emergencyContactPhone: input.emergencyContactPhone,
+            photoUrl: input.photoUrl,
+            membershipStatus: "PENDING",
+            dateOfBirth: dob,
+            waiverSigned: true,
+            waiverSignedAt: signedAt,
+            waiverVersion: signedWaiver.version,
+            waiverPdfUrl: signedWaiver.filename,
+            waiverPdfSha256: signedWaiver.sha256,
+            parentalConsent,
+            qrPayload,
+            registeredByUserId: user.id,
+          },
+        });
 
-  return {
-    member: withClientPhotoUrl(result.member),
-    loginEmail: email,
-  };
+        await writeAuditLog(
+          {
+            actionType: AuditAction.MEMBER_REGISTERED,
+            performedByUserId: user.id,
+            memberId: member.id,
+            details: {
+              fullName: member.fullName,
+              phone: member.phone,
+              waiverVersion: signedWaiver.version,
+              waiverPdfUrl: signedWaiver.filename,
+              waiverPdfSha256: signedWaiver.sha256,
+              source: "self",
+              pendingPhotoVerification: true,
+            },
+          },
+          tx
+        );
+
+        return { user, member };
+      }
+    );
+
+    return {
+      member: withClientPhotoUrl(result.member),
+      loginEmail: email,
+    };
+  } catch (error) {
+    await deleteMemberWaiverIfStored(signedWaiver.filename);
+    throw error;
+  }
 }
 
 /**
