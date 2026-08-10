@@ -3,7 +3,8 @@
  *
  * Authenticates a user for the member portal or volunteer/admin dashboard.
  * Failed attempts are rate-limited per client IP and per email.
- * Members with PENDING photo verification cannot log in yet.
+ * Members with PENDING verification or AGE_EXPIRED (turned 18 after a minor
+ * registration) cannot log in yet / anymore.
  * Users with mustChangePassword receive cookies but the client redirects
  * them to change-password (works for MEMBER, VOLUNTEER, and ADMIN).
  */
@@ -24,6 +25,11 @@ import {
   loginIpKey,
   recordRateLimitHit,
 } from "@/lib/auth/rateLimit";
+import { flagMinorRegistrationAgeExpired } from "@/lib/services/members";
+import {
+  AGE_EXPIRED_LOGIN_MESSAGE,
+  isMinorRegistrationAgeExpired,
+} from "@/lib/members/rules";
 
 /** Login request body (email, password, portal target). */
 const loginSchema = z.object({
@@ -95,7 +101,14 @@ export async function POST(request: NextRequest) {
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
     include: {
-      member: { select: { id: true, membershipStatus: true } },
+      member: {
+        select: {
+          id: true,
+          membershipStatus: true,
+          dateOfBirth: true,
+          createdAt: true,
+        },
+      },
     },
   });
 
@@ -124,11 +137,33 @@ export async function POST(request: NextRequest) {
       );
     }
     if (user.member.membershipStatus === "PENDING") {
+      if (
+        isMinorRegistrationAgeExpired(
+          user.member.dateOfBirth,
+          user.member.createdAt
+        )
+      ) {
+        await prisma.member.update({
+          where: { id: user.member.id },
+          data: { membershipStatus: "AGE_EXPIRED" },
+        });
+        return NextResponse.json(
+          { error: AGE_EXPIRED_LOGIN_MESSAGE },
+          { status: 403 }
+        );
+      }
       return NextResponse.json(
         {
           error:
             "Your registration is awaiting admin verification of your government ID and waiver. Please try again later.",
         },
+        { status: 403 }
+      );
+    }
+    // Minor registration that aged to 18+ — must delete and re-register as adult.
+    if (await flagMinorRegistrationAgeExpired(user.member.id)) {
+      return NextResponse.json(
+        { error: AGE_EXPIRED_LOGIN_MESSAGE },
         { status: 403 }
       );
     }

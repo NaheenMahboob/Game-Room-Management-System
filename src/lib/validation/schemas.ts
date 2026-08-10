@@ -74,7 +74,9 @@ export const updateMemberSchema = z.object({
   email: z.string().trim().email().optional().or(z.literal("")).optional(),
   emergencyContactName: z.string().trim().min(2).max(120).optional(),
   emergencyContactPhone: z.string().trim().min(7).max(30).optional(),
-  membershipStatus: z.enum(["PENDING", "ACTIVE", "INACTIVE"]).optional(),
+  membershipStatus: z
+    .enum(["PENDING", "ACTIVE", "INACTIVE", "AGE_EXPIRED"])
+    .optional(),
 });
 
 /**

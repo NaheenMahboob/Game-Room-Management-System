@@ -233,7 +233,7 @@ export default function RegisterMemberPage() {
       <PhotoCapture
         value={govIdPreview}
         onChange={setGovIdPreview}
-        label="Government ID photo *"
+        label="Government ID photo * (legal guardian if under 18)"
       />
       <WaiverAgreement />
       <SignaturePad onChange={setSignature} />

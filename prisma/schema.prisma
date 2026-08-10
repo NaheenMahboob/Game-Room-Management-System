@@ -35,11 +35,12 @@ enum ConditionStatus {
   OUT_OF_ORDER
 }
 
-// PENDING = self-registered, awaiting staff photo verification.
+// PENDING = awaiting admin verification; AGE_EXPIRED = registered as minor, now 18+.
 enum MembershipStatus {
   PENDING
   ACTIVE
   INACTIVE
+  AGE_EXPIRED
 }
 
 enum TargetAudience {
@@ -77,7 +78,7 @@ model Member {
   userId                 String           @unique
   user                   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullName               String
-  phone                  String           @unique
+  phone                  String
   email                  String?
   emergencyContactName   String
   emergencyContactPhone  String

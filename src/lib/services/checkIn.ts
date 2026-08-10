@@ -12,6 +12,7 @@ import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";
+import { flagMinorRegistrationAgeExpired } from "@/lib/services/members";
 import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 
 /** Shared select for desk roster rows (waiting + inside). */
@@ -137,6 +138,11 @@ export async function requestCheckIn(
 ) {
   const member = await prisma.member.findUnique({ where: { id: memberId } });
   if (!member) throw new Error("Member not found");
+  if (await flagMinorRegistrationAgeExpired(memberId)) {
+    throw new Error(
+      "Your minor registration has expired. Ask an admin to delete your account, then register again as an adult."
+    );
+  }
   if (member.membershipStatus !== "ACTIVE") {
     throw new Error("Only active members can request check-in");
   }

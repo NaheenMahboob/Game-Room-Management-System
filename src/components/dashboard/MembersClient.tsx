@@ -80,9 +80,8 @@ export function MembersClient() {
   /** Local data-URL draft before upload on retake. */
   const [photoDraft, setPhotoDraft] = useState<string | null>(null);
   const [savingPhoto, setSavingPhoto] = useState(false);
-  /** True when the logged-in desk user is an ADMIN (delete + gov ID lookup). */
+  /** True when the logged-in desk user is an ADMIN (gov ID lookup). */
   const [isAdmin, setIsAdmin] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   /**
    * Loads a member by id and resets photo-verify / retake UI state.
@@ -435,6 +434,13 @@ export function MembersClient() {
                   Membership is inactive — sign-in is blocked.
                 </p>
               ) : null}
+              {selected.membershipStatus === "AGE_EXPIRED" ? (
+                <p className="rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+                  Age-expired: registered as a minor and now 18+. Delete this
+                  account (Admin → Users) so they can register again as an
+                  adult.
+                </p>
+              ) : null}
               {!isInside &&
               selected.membershipStatus === "ACTIVE" &&
               !selected.checkInRequestedAt ? (
@@ -608,37 +614,6 @@ export function MembersClient() {
             >
               Guest pass
             </button>
-            {isAdmin ? (
-              <button
-                type="button"
-                disabled={deleting}
-                onClick={async () => {
-                  const confirmed = window.confirm(
-                    `Permanently delete ${selected.fullName}?\n\nThis removes their account, photos, government ID, and waiver PDF. The email and phone can be used for a new registration. This cannot be undone.`
-                  );
-                  if (!confirmed) return;
-                  setDeleting(true);
-                  try {
-                    await apiFetch(`/api/members/${selected.id}`, {
-                      method: "DELETE",
-                    });
-                    toast.push("Member deleted");
-                    setSelected(null);
-                    await refreshRoster(q);
-                  } catch (err) {
-                    toast.push(
-                      err instanceof Error ? err.message : "Delete failed",
-                      "error"
-                    );
-                  } finally {
-                    setDeleting(false);
-                  }
-                }}
-                className="min-h-12 rounded-xl bg-red-700 px-5 font-semibold disabled:opacity-60"
-              >
-                {deleting ? "Deleting…" : "Delete member"}
-              </button>
-            ) : null}
           </div>
 
           {selected.loans.length > 0 ? (

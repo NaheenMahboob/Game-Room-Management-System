@@ -171,6 +171,9 @@ export default function PendingMembersPage() {
                     <div className="space-y-1">
                       <p className="text-xs font-semibold uppercase text-amber-400">
                         Government ID
+                        <span className="block font-normal normal-case text-slate-500">
+                          (legal guardian if under 18)
+                        </span>
                       </p>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img

@@ -21,6 +21,7 @@ import {
   getSettingBoolean,
 } from "@/lib/settings";
 import { minutesBetween } from "@/lib/members/rules";
+import { flagMinorRegistrationAgeExpired } from "@/lib/services/members";
 import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 
 /** Prisma client or an open transaction used for loan queries. */
@@ -298,6 +299,11 @@ export async function borrowEquipment(
 ) {
   const member = await prisma.member.findUnique({ where: { id: memberId } });
   if (!member) throw new Error("Member not found");
+  if (await flagMinorRegistrationAgeExpired(memberId)) {
+    throw new Error(
+      "This minor registration has expired (member is now 18+). Delete the account so they can re-register as an adult."
+    );
+  }
   if (member.membershipStatus !== "ACTIVE") {
     if (member.membershipStatus === "PENDING") {
       throw new Error(

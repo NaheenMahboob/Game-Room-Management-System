@@ -14,6 +14,7 @@ import {
   getMaxSessionDuration,
 } from "@/lib/settings";
 import { returnLoansForMember } from "@/lib/services/loans";
+import { flagMinorRegistrationAgeExpired } from "@/lib/services/members";
 import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 
 /**
@@ -61,10 +62,20 @@ export async function signInMember(
 
   const member = await prisma.member.findUnique({ where: { id: memberId } });
   if (!member) throw new Error("Member not found");
+  if (await flagMinorRegistrationAgeExpired(memberId)) {
+    throw new Error(
+      "This minor registration has expired (member is now 18+). Delete the account so they can re-register as an adult."
+    );
+  }
   if (member.membershipStatus !== "ACTIVE") {
     if (member.membershipStatus === "PENDING") {
       throw new Error(
         "Registration is still awaiting photo verification"
+      );
+    }
+    if (member.membershipStatus === "AGE_EXPIRED") {
+      throw new Error(
+        "This minor registration has expired (member is now 18+). Delete the account so they can re-register as an adult."
       );
     }
     throw new Error("Membership is inactive");

@@ -22,7 +22,6 @@ type Member = {
   id: string;
   fullName: string;
   phone: string;
-  email: string | null;
   emergencyContactName: string;
   emergencyContactPhone: string;
   photoUrl: string;
@@ -69,7 +68,6 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
   const [checkInBusy, setCheckInBusy] = useState(false);
   const [form, setForm] = useState({
     phone: "",
-    email: "",
     emergencyContactName: "",
     emergencyContactPhone: "",
   });
@@ -77,15 +75,14 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
 
   /**
    * Reloads the member profile from the API into local state.
- * @author Muhammad Naheen Mahboob
- * @author Mashrur Khandaker
- */
+   * @author Muhammad Naheen Mahboob
+   * @author Mashrur Khandaker
+   */
   async function refreshMember() {
     const data = await apiFetch<{ member: Member }>(`/api/members/${memberId}`);
     setMember(data.member);
     setForm({
       phone: data.member.phone,
-      email: data.member.email ?? "",
       emergencyContactName: data.member.emergencyContactName,
       emergencyContactPhone: data.member.emergencyContactPhone,
     });
@@ -223,6 +220,13 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
         <div>
           <h1 className="text-3xl font-semibold">{member.fullName}</h1>
           <p className="text-slate-400">{member.membershipStatus}</p>
+          {member.membershipStatus === "AGE_EXPIRED" ? (
+            <p className="mt-2 rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+              This account was created while you were under 18 and can no longer
+              be used. Ask an admin to delete it, then register again as an
+              adult.
+            </p>
+          ) : null}
           {member.waiverPdfUrl ? (
             <p className="mt-1 text-sm">
               <a
@@ -344,7 +348,6 @@ export function PortalProfileClient({ memberId }: PortalProfileClientProps) {
         {(
           [
             ["phone", "Phone"],
-            ["email", "Email"],
             ["emergencyContactName", "Emergency contact name"],
             ["emergencyContactPhone", "Emergency contact phone"],
           ] as const

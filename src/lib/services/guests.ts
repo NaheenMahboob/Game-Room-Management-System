@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";
 import { getGuestLimit } from "@/lib/settings";
+import { flagMinorRegistrationAgeExpired } from "@/lib/services/members";
 
 /**
  * Creates a guest pass for an active host member, enforcing per-host open-pass limits.
@@ -23,6 +24,11 @@ export async function issueGuestPass(
 ) {
   const host = await prisma.member.findUnique({ where: { id: hostMemberId } });
   if (!host) throw new Error("Host member not found");
+  if (await flagMinorRegistrationAgeExpired(hostMemberId)) {
+    throw new Error(
+      "This minor registration has expired (member is now 18+). Delete the account so they can re-register as an adult."
+    );
+  }
   if (host.membershipStatus !== "ACTIVE") {
     throw new Error("Host membership is inactive");
   }

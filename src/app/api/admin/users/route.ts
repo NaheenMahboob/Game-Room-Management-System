@@ -38,7 +38,16 @@ const userSelect = {
   role: true,
   mustChangePassword: true,
   createdAt: true,
-  member: { select: { id: true, fullName: true, membershipStatus: true } },
+  member: {
+    select: {
+      id: true,
+      fullName: true,
+      membershipStatus: true,
+      // Filenames only — UI builds admin download links when present.
+      waiverPdfUrl: true,
+      governmentIdUrl: true,
+    },
+  },
 } as const;
 
 /**
@@ -56,17 +65,40 @@ type UserRow = {
     id: string;
     fullName: string;
     membershipStatus: string;
+    waiverPdfUrl: string | null;
+    governmentIdUrl: string | null;
   } | null;
 };
 
 /**
- * Adds `isBootstrap` so the admin UI can disable demotion without hardcoding the email.
+ * Adds `isBootstrap` and client URLs for waiver / government ID when on file.
  *
  * @author Muhammad Naheen Mahboob
  */
 function withBootstrapFlag<T extends UserRow>(user: T) {
+  const member = user.member
+    ? {
+        id: user.member.id,
+        fullName: user.member.fullName,
+        membershipStatus: user.member.membershipStatus,
+        hasWaiverPdf: Boolean(user.member.waiverPdfUrl),
+        hasGovernmentId: Boolean(user.member.governmentIdUrl),
+        waiverPdfSrc: user.member.waiverPdfUrl
+          ? `/api/members/${user.member.id}/waiver`
+          : null,
+        governmentIdSrc: user.member.governmentIdUrl
+          ? `/api/members/${user.member.id}/government-id`
+          : null,
+      }
+    : null;
+
   return {
-    ...user,
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    mustChangePassword: user.mustChangePassword,
+    createdAt: user.createdAt,
+    member,
     isBootstrap: isBootstrapAdminEmail(user.email),
   };
 }

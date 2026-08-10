@@ -12,7 +12,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction } from "@/lib/audit/actions";
 import { generateQrPayload, generateTempPassword } from "@/lib/members/ids";
-import { isMinor } from "@/lib/members/rules";
+import { isMinor, isMinorRegistrationAgeExpired } from "@/lib/members/rules";
 import { getCurrentWaiverVersion } from "@/lib/settings";
 import {
   deleteMemberPhotoIfStored,
@@ -76,6 +76,8 @@ export async function searchMembers(q: string, limit = 20) {
  * @author Mashrur Khandaker
  */
 export async function getMemberById(id: string) {
+  // Flip minor→adult registrations to AGE_EXPIRED before returning profile.
+  await flagMinorRegistrationAgeExpired(id);
   const member = await prisma.member.findUnique({
     where: { id },
     include: {
@@ -95,6 +97,34 @@ export async function getMemberById(id: string) {
 }
 
 /**
+ * If this member registered under 18 and is now 18+, set status to AGE_EXPIRED.
+ *
+ * @param memberId - Member cuid
+ * @returns true when the account is (or was just marked) age-expired
+ * @author Muhammad Naheen Mahboob
+ */
+export async function flagMinorRegistrationAgeExpired(
+  memberId: string
+): Promise<boolean> {
+  const member = await prisma.member.findUnique({ where: { id: memberId } });
+  if (!member) return false;
+  if (member.membershipStatus === "AGE_EXPIRED") return true;
+  // Leave PENDING in the admin queue; approval sets AGE_EXPIRED when needed.
+  if (member.membershipStatus === "PENDING") return false;
+  if (
+    !isMinorRegistrationAgeExpired(member.dateOfBirth, member.createdAt)
+  ) {
+    return false;
+  }
+
+  await prisma.member.update({
+    where: { id: memberId },
+    data: { membershipStatus: "AGE_EXPIRED" },
+  });
+  return true;
+}
+
+/**
  * Looks up a member by QR payload with a private photo URL for desk display.
  *
  * @param qrPayload - Scanned QR value
@@ -102,22 +132,12 @@ export async function getMemberById(id: string) {
  * @author Mashrur Khandaker
  */
 export async function getMemberByQr(qrPayload: string) {
-  const member = await prisma.member.findUnique({
+  const found = await prisma.member.findUnique({
     where: { qrPayload },
-    include: {
-      user: { select: { id: true, email: true, role: true } },
-      attendances: {
-        where: { signOutTime: null },
-        take: 1,
-        orderBy: { signInTime: "desc" },
-      },
-      loans: {
-        where: { returnedAt: null },
-        include: { equipment: true },
-      },
-    },
+    select: { id: true },
   });
-  return member ? withClientPhotoUrl(member) : null;
+  if (!found) return null;
+  return getMemberById(found.id);
 }
 
 /** Validated desk registration payload from {@link registerMemberSchema}.
@@ -131,15 +151,12 @@ type RegisterInput = z.infer<typeof registerMemberSchema>;
  */
 type SelfRegisterInput = z.infer<typeof selfRegisterMemberSchema>;
 
-/** Ensures phone and email are not already registered before creating a member.
+/** Ensures login email is not already registered before creating a member.
+ * Phone may be shared (e.g. siblings with the same parent).
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
  */
-async function assertUniquePhoneAndEmail(phone: string, email: string) {
-  const existingPhone = await prisma.member.findUnique({ where: { phone } });
-  if (existingPhone) {
-    throw new Error("A member with this phone number already exists.");
-  }
+async function assertUniqueLoginEmail(email: string) {
   const existingEmail = await prisma.user.findUnique({ where: { email } });
   if (existingEmail) {
     throw new Error("A user with this email already exists.");
@@ -174,7 +191,7 @@ export async function registerMember(
     );
   }
 
-  await assertUniquePhoneAndEmail(input.phone, email);
+  await assertUniqueLoginEmail(email);
   // Reject disposable / non-mail domains when staff enter a real address.
   if (providedEmail) {
     await assertEmailDomainAcceptsMail(providedEmail);
@@ -289,7 +306,7 @@ export async function selfRegisterMember(input: SelfRegisterInput) {
     );
   }
 
-  await assertUniquePhoneAndEmail(input.phone, email);
+  await assertUniqueLoginEmail(email);
   // Self-register always has a real email — MX + disposable checks required.
   await assertEmailDomainAcceptsMail(email);
 
@@ -429,10 +446,17 @@ export async function approveMemberRegistration(
     throw new Error("Member is not awaiting verification");
   }
 
+  // Registered as a minor but already 18 by approval day → cannot activate.
+  const ageExpired = isMinorRegistrationAgeExpired(
+    existing.dateOfBirth,
+    existing.createdAt
+  );
+  const membershipStatus = ageExpired ? "AGE_EXPIRED" : "ACTIVE";
+
   const member = await prisma.member.update({
     where: { id: memberId },
     data: {
-      membershipStatus: "ACTIVE",
+      membershipStatus,
       approvedByUserId,
       approvedAt: new Date(),
     },
@@ -442,7 +466,11 @@ export async function approveMemberRegistration(
     actionType: AuditAction.MEMBER_APPROVED,
     performedByUserId: approvedByUserId,
     memberId,
-    details: { previousStatus: "PENDING" },
+    details: {
+      previousStatus: "PENDING",
+      membershipStatus,
+      ageExpired,
+    },
   });
 
   return withClientPhotoUrl(member);
@@ -488,10 +516,13 @@ export async function rejectMemberRegistration(
   await deleteMemberGovernmentIdIfStored(existing.governmentIdUrl);
   await deleteMemberWaiverIfStored(existing.waiverPdfUrl);
 
-  // Member first (registeredBy may point at the same user), then the User row.
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    await tx.member.delete({ where: { id: memberId } });
-    await tx.user.delete({ where: { id: existing.userId } });
+    await detachUserAndMemberForDelete(
+      tx,
+      existing.id,
+      existing.userId,
+      rejectedByUserId
+    );
   });
 
   return { deleted: true as const, memberId };
@@ -542,11 +573,103 @@ export async function deleteMemberHard(
   await deleteMemberWaiverIfStored(existing.waiverPdfUrl);
 
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    await tx.member.delete({ where: { id: memberId } });
-    await tx.user.delete({ where: { id: existing.userId } });
+    await detachUserAndMemberForDelete(
+      tx,
+      existing.id,
+      existing.userId,
+      deletedByUserId
+    );
   });
 
   return { deleted: true as const, memberId };
+}
+
+/**
+ * Reassigns history FKs that block User/Member deletion, then deletes both rows.
+ * Attendance / loans / audit rows that reference this user as staff are pointed
+ * at the admin performing the delete so room history is preserved.
+ *
+ * @param tx - Open Prisma transaction
+ * @param memberId - Member row to remove
+ * @param userId - Linked user row to remove
+ * @param reassignToUserId - Admin (or other surviving user) to own orphaned FKs
+ * @author Muhammad Naheen Mahboob
+ */
+async function detachUserAndMemberForDelete(
+  tx: Prisma.TransactionClient,
+  memberId: string,
+  userId: string,
+  reassignToUserId: string
+) {
+  // Drop member link on audit rows so Member delete is not blocked.
+  await tx.auditLog.updateMany({
+    where: { memberId },
+    data: { memberId: null },
+  });
+
+  // Preserve audit history: move "performed by" off the user being deleted.
+  await tx.auditLog.updateMany({
+    where: { performedByUserId: userId },
+    data: { performedByUserId: reassignToUserId },
+  });
+
+  await tx.attendance.updateMany({
+    where: { signedInByUserId: userId },
+    data: { signedInByUserId: reassignToUserId },
+  });
+  await tx.attendance.updateMany({
+    where: { signedOutByUserId: userId },
+    data: { signedOutByUserId: reassignToUserId },
+  });
+
+  await tx.loan.updateMany({
+    where: { borrowedByUserId: userId },
+    data: { borrowedByUserId: reassignToUserId },
+  });
+  await tx.loan.updateMany({
+    where: { returnedByUserId: userId },
+    data: { returnedByUserId: reassignToUserId },
+  });
+
+  // Other members may still list this user as registrar / approver.
+  await tx.member.updateMany({
+    where: { registeredByUserId: userId, NOT: { id: memberId } },
+    data: { registeredByUserId: reassignToUserId },
+  });
+  await tx.member.updateMany({
+    where: { approvedByUserId: userId },
+    data: { approvedByUserId: reassignToUserId },
+  });
+
+  await tx.announcement.updateMany({
+    where: { createdByUserId: userId },
+    data: { createdByUserId: reassignToUserId },
+  });
+  await tx.event.updateMany({
+    where: { createdByUserId: userId },
+    data: { createdByUserId: reassignToUserId },
+  });
+  await tx.waiver.updateMany({
+    where: { createdByUserId: userId },
+    data: { createdByUserId: reassignToUserId },
+  });
+
+  await tx.shiftChecklist.updateMany({
+    where: { volunteerUserId: userId },
+    data: { volunteerUserId: reassignToUserId },
+  });
+
+  // Self-registered members point registeredBy at themselves — retarget first.
+  await tx.member.update({
+    where: { id: memberId },
+    data: {
+      registeredByUserId: reassignToUserId,
+      approvedByUserId: null,
+    },
+  });
+
+  await tx.member.delete({ where: { id: memberId } });
+  await tx.user.delete({ where: { id: userId } });
 }
 
 /**
@@ -677,6 +800,21 @@ export async function updateMember(
   if (input.email && input.email.length > 0) {
     // Same domain checks as registration so profile edits cannot store fake mail.
     await assertEmailDomainAcceptsMail(input.email.toLowerCase());
+  }
+
+  if (asAdmin && input.membershipStatus === "ACTIVE") {
+    const existing = await prisma.member.findUnique({
+      where: { id: memberId },
+    });
+    if (
+      existing &&
+      (existing.membershipStatus === "AGE_EXPIRED" ||
+        isMinorRegistrationAgeExpired(existing.dateOfBirth, existing.createdAt))
+    ) {
+      throw new Error(
+        "This minor registration has expired. Delete the account so they can re-register as an adult."
+      );
+    }
   }
 
   const member = await prisma.member.update({
