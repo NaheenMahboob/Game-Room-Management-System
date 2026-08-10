@@ -184,8 +184,11 @@ export async function registerMember(
       : null;
   const email = providedEmail ?? `member+${Date.now()}@mosque.local`;
 
-  const dob = input.dateOfBirth ? new Date(input.dateOfBirth) : null;
-  if (dob && isMinor(dob) && !input.parentalConsent) {
+  const dob = new Date(input.dateOfBirth);
+  if (Number.isNaN(dob.getTime())) {
+    throw new Error("Invalid date of birth");
+  }
+  if (isMinor(dob) && !input.parentalConsent) {
     throw new Error(
       "Parental consent is required for members under 18 before registration can complete."
     );
@@ -202,8 +205,7 @@ export async function registerMember(
   // Unique QR payload for the membership card / desk scanner.
   const qrPayload = generateQrPayload();
 
-  const parentalConsent =
-    dob && isMinor(dob) ? input.parentalConsent : true;
+  const parentalConsent = isMinor(dob) ? input.parentalConsent : true;
   const signedAt = new Date();
   // Stamp signature onto the current waiver PDF before the DB row exists.
   const signedWaiver = await createAndStoreSignedWaiverPdf({
@@ -299,8 +301,11 @@ export async function registerMember(
 export async function selfRegisterMember(input: SelfRegisterInput) {
   const waiverVersion = await getCurrentWaiverVersion();
   const email = input.email.toLowerCase();
-  const dob = input.dateOfBirth ? new Date(input.dateOfBirth) : null;
-  if (dob && isMinor(dob) && !input.parentalConsent) {
+  const dob = new Date(input.dateOfBirth);
+  if (Number.isNaN(dob.getTime())) {
+    throw new Error("Invalid date of birth");
+  }
+  if (isMinor(dob) && !input.parentalConsent) {
     throw new Error(
       "Parental consent is required for members under 18 before registration can complete."
     );
@@ -313,8 +318,7 @@ export async function selfRegisterMember(input: SelfRegisterInput) {
   const passwordHash = await hashPassword(input.password);
   const qrPayload = generateQrPayload();
 
-  const parentalConsent =
-    dob && isMinor(dob) ? input.parentalConsent : true;
+  const parentalConsent = isMinor(dob) ? input.parentalConsent : true;
   const signedAt = new Date();
   const signedWaiver = await createAndStoreSignedWaiverPdf({
     fullName: input.fullName,

@@ -91,7 +91,7 @@ export default function RegisterMemberPage() {
         body: JSON.stringify({
           ...form,
           email: form.email || "",
-          dateOfBirth: form.dateOfBirth || undefined,
+          dateOfBirth: form.dateOfBirth,
           photoUrl,
           governmentIdUrl,
           waiverSigned: true,
@@ -224,7 +224,7 @@ export default function RegisterMemberPage() {
         {field("fullName", "Full name *")}
         {field("phone", "Phone *", "tel")}
         {field("email", "Email (recommended)", "email", false)}
-        {field("dateOfBirth", "Date of birth", "date", false)}
+        {field("dateOfBirth", "Date of birth *", "date")}
         {field("emergencyContactName", "Emergency contact name *")}
         {field("emergencyContactPhone", "Emergency contact phone *", "tel")}
       </div>

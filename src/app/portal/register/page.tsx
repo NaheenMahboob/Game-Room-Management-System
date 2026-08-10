@@ -98,7 +98,7 @@ export default function PortalRegisterPage() {
           password: form.password,
           emergencyContactName: form.emergencyContactName,
           emergencyContactPhone: form.emergencyContactPhone,
-          dateOfBirth: form.dateOfBirth || undefined,
+          dateOfBirth: form.dateOfBirth,
           photoUrl,
           governmentIdUrl,
           waiverSigned: true,
@@ -189,7 +189,7 @@ export default function PortalRegisterPage() {
           {field("fullName", "Full name *")}
           {field("phone", "Phone *", "tel")}
           {field("email", "Email *", "email")}
-          {field("dateOfBirth", "Date of birth", "date", false)}
+          {field("dateOfBirth", "Date of birth *", "date")}
           {field("emergencyContactName", "Emergency contact name *")}
           {field("emergencyContactPhone", "Emergency contact phone *", "tel")}
           <PasswordField

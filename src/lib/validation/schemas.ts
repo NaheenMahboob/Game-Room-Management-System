@@ -21,6 +21,18 @@ const equipmentTypeEnum = z.enum([
   "AIR_HOCKEY",
 ]);
 
+/** Required YYYY-MM-DD (or parseable date) birth date for registration. */
+const dateOfBirthRequired = z
+  .string()
+  .trim()
+  .min(1, "Date of birth is required")
+  .refine((value) => !Number.isNaN(Date.parse(value)), {
+    message: "Invalid date of birth",
+  })
+  .refine((value) => new Date(value) <= new Date(), {
+    message: "Date of birth cannot be in the future",
+  });
+
 /** Body for `POST /api/members` after the photo has been uploaded to disk. */
 export const registerMemberSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -41,7 +53,7 @@ export const registerMemberSchema = z.object({
       /^(gid|self-gid|reg-gid)-[\w.-]+\.(jpe?g|png|webp)$/i,
       "Invalid government ID filename"
     ),
-  dateOfBirth: z.string().optional(),
+  dateOfBirth: dateOfBirthRequired,
   waiverSigned: z.literal(true),
   waiverSignature: z.string().trim().min(1),
   parentalConsent: z.boolean().default(false),
