@@ -1,7 +1,9 @@
 /**
  * Member search and desk registration for staff.
  * GET lists/searches the desk roster: waiting to enter + currently inside.
- * POST registers a member at the volunteer desk (auto-adds to waiting list).
+ * POST registers a PENDING member (admin must verify gov ID + waiver later).
+ *
+ * @author Muhammad Naheen Mahboob
  */
 
 import { withRole } from "@/lib/auth/api";
@@ -13,6 +15,7 @@ import {
 import { registerMember } from "@/lib/services/members";
 import { listDeskRoster, searchDeskRoster } from "@/lib/services/checkIn";
 import { deleteOrphanRegistrationPhoto } from "@/lib/uploads/memberPhoto";
+import { deleteOrphanRegistrationGovernmentId } from "@/lib/uploads/memberGovernmentId";
 
 /**
  * Desk identify: without `q`, returns waiting + inside members;
@@ -39,22 +42,33 @@ export const GET = withRole(["VOLUNTEER", "ADMIN"], async ({ request }) => {
 });
 
 /**
- * Desk registration. Cleans up the prior `reg-*` photo upload if create fails.
- * New members are placed on the check-in waiting list automatically.
+ * Desk registration. Cleans up prior photo / gov ID uploads if create fails.
+ * New members stay PENDING until an admin verifies ID + waiver.
+ *
+ * @author Muhammad Naheen Mahboob
  */
-export const POST = withRole(["VOLUNTEER", "ADMIN"], async ({ request, session }) => {
-  let uploadedPhotoUrl: string | undefined;
-  try {
-    const body = await request.json();
-    const input = registerMemberSchema.parse(body);
-    uploadedPhotoUrl = input.photoUrl;
-    const result = await registerMember(input, session.sub);
-    uploadedPhotoUrl = undefined;
-    return jsonOk(result, 201);
-  } catch (error) {
-    if (uploadedPhotoUrl) {
-      await deleteOrphanRegistrationPhoto(uploadedPhotoUrl);
+export const POST = withRole(
+  ["VOLUNTEER", "ADMIN"],
+  async ({ request, session }) => {
+    let uploadedPhotoUrl: string | undefined;
+    let uploadedGovIdUrl: string | undefined;
+    try {
+      const body = await request.json();
+      const input = registerMemberSchema.parse(body);
+      uploadedPhotoUrl = input.photoUrl;
+      uploadedGovIdUrl = input.governmentIdUrl;
+      const result = await registerMember(input, session.sub);
+      uploadedPhotoUrl = undefined;
+      uploadedGovIdUrl = undefined;
+      return jsonOk(result, 201);
+    } catch (error) {
+      if (uploadedPhotoUrl) {
+        await deleteOrphanRegistrationPhoto(uploadedPhotoUrl);
+      }
+      if (uploadedGovIdUrl) {
+        await deleteOrphanRegistrationGovernmentId(uploadedGovIdUrl);
+      }
+      return handleRouteError(error);
     }
-    return handleRouteError(error);
   }
-});
+);

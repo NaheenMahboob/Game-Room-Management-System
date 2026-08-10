@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * Volunteer desk registration form.
- * Uploads the profile photo to private storage first, then creates the member
- * with the returned storage filename. Shows a persistent credentials panel
- * (email + temp password) that must be dismissed before leaving.
+ * Desk registration form (volunteer or admin tablet).
+ * Uploads profile photo + government ID, then creates a PENDING member with a
+ * signed waiver PDF. An admin must verify gov ID + waiver before the account
+ * becomes ACTIVE. Shows a credentials panel (email + temp password) after submit.
+ *
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
  */
@@ -12,14 +13,18 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api/client";
-import { uploadMemberPhotoDataUrl } from "@/lib/uploads/client";
+import {
+  uploadGovernmentIdDataUrl,
+  uploadMemberPhotoDataUrl,
+} from "@/lib/uploads/client";
 import { useToast } from "@/components/ui/Toast";
 import { PhotoCapture } from "@/components/dashboard/PhotoCapture";
 import { SignaturePad } from "@/components/dashboard/SignaturePad";
 import { WaiverAgreement } from "@/components/dashboard/WaiverAgreement";
 
 /**
- * Multi-step registration UI: details → photo → waiver → credentials panel.
+ * Multi-step registration UI: details → photos → waiver → credentials panel.
+ *
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
  */
@@ -28,6 +33,7 @@ export default function RegisterMemberPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [govIdPreview, setGovIdPreview] = useState<string | null>(null);
   const [signature, setSignature] = useState("");
   const [credentials, setCredentials] = useState<{
     memberId: string;
@@ -36,9 +42,9 @@ export default function RegisterMemberPage() {
     temporaryPassword: string;
   } | null>(null);
   /** Done stays disabled until credentials are copied.
- * @author Muhammad Naheen Mahboob
- * @author Mashrur Khandaker
- */
+   * @author Muhammad Naheen Mahboob
+   * @author Mashrur Khandaker
+   */
   const [credentialsCopied, setCredentialsCopied] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
@@ -56,6 +62,10 @@ export default function RegisterMemberPage() {
       toast.push("Profile photo is required", "error");
       return;
     }
+    if (!govIdPreview) {
+      toast.push("Government ID photo is required", "error");
+      return;
+    }
     if (!signature.trim()) {
       toast.push("Waiver signature is required", "error");
       return;
@@ -66,6 +76,10 @@ export default function RegisterMemberPage() {
       const photoUrl = await uploadMemberPhotoDataUrl(
         photoPreview,
         "/api/uploads/member-photo"
+      );
+      const governmentIdUrl = await uploadGovernmentIdDataUrl(
+        govIdPreview,
+        "/api/uploads/member-government-id"
       );
 
       const result = await apiFetch<{
@@ -79,6 +93,7 @@ export default function RegisterMemberPage() {
           email: form.email || "",
           dateOfBirth: form.dateOfBirth || undefined,
           photoUrl,
+          governmentIdUrl,
           waiverSigned: true,
           waiverSignature: signature,
         }),
@@ -92,7 +107,10 @@ export default function RegisterMemberPage() {
       });
       setCredentialsCopied(false);
     } catch (err) {
-      toast.push(err instanceof Error ? err.message : "Registration failed", "error");
+      toast.push(
+        err instanceof Error ? err.message : "Registration failed",
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -128,14 +146,14 @@ export default function RegisterMemberPage() {
 
   if (credentials) {
     return (
-      <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-emerald-500/40 bg-slate-900/80 p-6">
-        <h1 className="text-2xl font-semibold text-emerald-400">
-          Member registered
+      <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-amber-500/40 bg-slate-900/80 p-6">
+        <h1 className="text-2xl font-semibold text-amber-300">
+          Registration submitted — pending admin verification
         </h1>
         <p className="text-slate-300">
-          Copy these credentials for {credentials.fullName}. They must change
-          the password on first portal login. Copy before continuing — the temp
-          password will not be shown again.
+          Copy these credentials for {credentials.fullName}. An admin must
+          verify the government ID and signed waiver before they can sign in.
+          They must change the password on first portal login after approval.
         </p>
         <div className="select-all rounded-xl bg-slate-950 p-4 font-mono text-sm">
           <p>Email: {credentials.loginEmail}</p>
@@ -182,13 +200,9 @@ export default function RegisterMemberPage() {
                 : "Copy credentials before continuing"
             }
             className="min-h-12 rounded-xl bg-slate-700 px-5 font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-            onClick={() =>
-              router.push(
-                `/dashboard/members?memberId=${credentials.memberId}`
-              )
-            }
+            onClick={() => router.push("/dashboard/members/pending")}
           >
-            Done — open member
+            Done — open pending queue
           </button>
         </div>
       </div>
@@ -197,7 +211,14 @@ export default function RegisterMemberPage() {
 
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-5">
-      <h1 className="text-2xl font-semibold">Register new member</h1>
+      <div>
+        <h1 className="text-2xl font-semibold">Register new member</h1>
+        <p className="mt-1 text-sm text-slate-400">
+          Capture a profile photo and a government ID photo, then have them sign
+          the waiver. An admin reviews ID + waiver before the account is
+          activated.
+        </p>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {field("fullName", "Full name *")}
@@ -209,6 +230,11 @@ export default function RegisterMemberPage() {
       </div>
 
       <PhotoCapture value={photoPreview} onChange={setPhotoPreview} />
+      <PhotoCapture
+        value={govIdPreview}
+        onChange={setGovIdPreview}
+        label="Government ID photo *"
+      />
       <WaiverAgreement />
       <SignaturePad onChange={setSignature} />
 
@@ -228,10 +254,10 @@ export default function RegisterMemberPage() {
 
       <button
         type="submit"
-        disabled={loading || !photoPreview}
+        disabled={loading || !photoPreview || !govIdPreview}
         className="min-h-12 w-full rounded-xl bg-emerald-600 text-lg font-semibold disabled:opacity-60"
       >
-        {loading ? "Saving…" : "Complete registration"}
+        {loading ? "Saving…" : "Submit for admin verification"}
       </button>
     </form>
   );

@@ -2,9 +2,8 @@
 
 /**
  * Staff queues:
- * 1) Self-registered members awaiting first photo verification
- * 2) Existing members' photo retakes (approve → replace live; reject → keep old)
- * Both queues use scroll panels so tall photo cards do not stretch the page.
+ * 1) New registrations awaiting admin verification of gov ID + waiver + photo
+ * 2) Existing members' photo retakes (volunteers or admins)
  *
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
@@ -23,17 +22,26 @@ type PendingMember = {
   photoUrl: string;
   createdAt: string;
   user: { email: string };
+  governmentIdUrl?: string | null;
+  waiverPdfSrc?: string | null;
+  hasWaiverPdf?: boolean;
 };
 
 type PhotoRetake = PendingMember & {
   pendingPhotoUrl: string | null;
 };
 
+/**
+ * Pending verification queues for desk staff.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
 export default function PendingMembersPage() {
   const toast = useToast();
   const [members, setMembers] = useState<PendingMember[]>([]);
   const [photoRetakes, setPhotoRetakes] = useState<PhotoRetake[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const refresh = useCallback(async () => {
     const data = await apiFetch<{
@@ -42,6 +50,12 @@ export default function PendingMembersPage() {
     }>("/api/members/pending");
     setMembers(data.members);
     setPhotoRetakes(data.photoRetakes);
+  }, []);
+
+  useEffect(() => {
+    apiFetch<{ user: { role: string } }>("/api/auth/me")
+      .then((data) => setIsAdmin(data.user.role === "ADMIN"))
+      .catch(() => setIsAdmin(false));
   }, []);
 
   useEffect(() => {
@@ -113,7 +127,7 @@ export default function PendingMembersPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Pending photo verification</h1>
+        <h1 className="text-2xl font-semibold">Pending verification</h1>
         <Link
           href="/dashboard/members"
           className="min-h-11 rounded-xl bg-slate-700 px-4 py-2 font-semibold"
@@ -126,9 +140,9 @@ export default function PendingMembersPage() {
         <div>
           <h2 className="text-lg font-semibold">New registrations</h2>
           <p className="text-sm text-slate-400">
-            Self-registered members stay here until you approve. Reject deletes
-            the request so they can try again; cancel the confirm dialog to leave
-            them pending.
+            {isAdmin
+              ? "Review the profile photo, government ID, and signed waiver, then approve or reject. Reject deletes the request so they can try again."
+              : "Only admins can approve or reject registrations after checking the government ID and waiver. Volunteers can still handle photo retakes below."}
           </p>
         </div>
 
@@ -142,12 +156,30 @@ export default function PendingMembersPage() {
                   key={m.id}
                   className="flex flex-wrap gap-5 rounded-2xl border border-slate-700 bg-slate-900/70 p-4"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={m.photoUrl}
-                    alt=""
-                    className="h-36 w-36 rounded-2xl object-cover bg-slate-800"
-                  />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase text-slate-500">
+                      Profile
+                    </p>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={m.photoUrl}
+                      alt=""
+                      className="h-36 w-36 rounded-2xl object-cover bg-slate-800"
+                    />
+                  </div>
+                  {isAdmin && m.governmentIdUrl ? (
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase text-amber-400">
+                        Government ID
+                      </p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={m.governmentIdUrl}
+                        alt=""
+                        className="h-36 w-56 rounded-2xl object-cover bg-slate-800 ring-2 ring-amber-500/50"
+                      />
+                    </div>
+                  ) : null}
                   <div className="flex-1 space-y-2">
                     <h3 className="text-xl font-bold">{m.fullName}</h3>
                     <p className="text-slate-300">{m.user.email}</p>
@@ -155,24 +187,40 @@ export default function PendingMembersPage() {
                     <p className="text-xs text-slate-500">
                       Submitted {new Date(m.createdAt).toLocaleString()}
                     </p>
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => actRegistration(m.id, "approve")}
-                        className="min-h-11 rounded-xl bg-emerald-600 px-4 font-semibold disabled:opacity-60"
+                    {isAdmin && m.waiverPdfSrc ? (
+                      <a
+                        href={m.waiverPdfSrc}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-block text-sm font-semibold text-emerald-400 underline"
                       >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => actRegistration(m.id, "reject")}
-                        className="min-h-11 rounded-xl bg-red-600 px-4 font-semibold disabled:opacity-60"
-                      >
-                        Reject
-                      </button>
-                    </div>
+                        Open signed waiver PDF
+                      </a>
+                    ) : null}
+                    {isAdmin ? (
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => actRegistration(m.id, "approve")}
+                          className="min-h-11 rounded-xl bg-emerald-600 px-4 font-semibold disabled:opacity-60"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => actRegistration(m.id, "reject")}
+                          className="min-h-11 rounded-xl bg-red-600 px-4 font-semibold disabled:opacity-60"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="pt-2 text-sm text-amber-200">
+                        Waiting for an admin to verify ID and waiver.
+                      </p>
+                    )}
                   </div>
                 </li>
               ))}

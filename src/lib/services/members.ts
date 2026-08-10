@@ -19,6 +19,10 @@ import {
   withClientPhotoUrl,
 } from "@/lib/uploads/memberPhoto";
 import { deleteMemberWaiverIfStored } from "@/lib/uploads/memberWaiver";
+import {
+  deleteMemberGovernmentIdIfStored,
+  memberGovernmentIdSrc,
+} from "@/lib/uploads/memberGovernmentId";
 import { createAndStoreSignedWaiverPdf } from "@/lib/waivers/signedPdf";
 import type { z } from "zod";
 import type {
@@ -143,9 +147,10 @@ async function assertUniquePhoneAndEmail(phone: string, email: string) {
 }
 
 /**
- * Desk registration by volunteer/admin — ACTIVE immediately (photo verified in person).
+ * Desk registration by volunteer/admin — PENDING until an admin verifies
+ * the profile photo, government ID, and signed waiver PDF.
  *
- * @param input - Validated registration payload (`photoUrl` = storage filename)
+ * @param input - Validated registration payload (photo + gov ID storage filenames)
  * @param registeredByUserId - Staff user performing registration
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
@@ -207,6 +212,7 @@ export async function registerMember(
           },
         });
 
+        // PENDING until an admin reviews gov ID + waiver (not auto-approved).
         const member = await tx.member.create({
           data: {
             userId: user.id,
@@ -216,7 +222,8 @@ export async function registerMember(
             emergencyContactName: input.emergencyContactName,
             emergencyContactPhone: input.emergencyContactPhone,
             photoUrl: input.photoUrl,
-            membershipStatus: "ACTIVE",
+            governmentIdUrl: input.governmentIdUrl,
+            membershipStatus: "PENDING",
             dateOfBirth: dob,
             waiverSigned: true,
             waiverSignedAt: signedAt,
@@ -226,10 +233,6 @@ export async function registerMember(
             parentalConsent,
             qrPayload,
             registeredByUserId,
-            approvedByUserId: registeredByUserId,
-            approvedAt: new Date(),
-            // Walk-up desk register: place them on the waiting list immediately.
-            checkInRequestedAt: new Date(),
           },
         });
 
@@ -244,7 +247,9 @@ export async function registerMember(
               waiverVersion: signedWaiver.version,
               waiverPdfUrl: signedWaiver.filename,
               waiverPdfSha256: signedWaiver.sha256,
+              governmentIdUrl: input.governmentIdUrl,
               source: "desk",
+              pendingAdminVerification: true,
             },
           },
           tx
@@ -261,14 +266,16 @@ export async function registerMember(
     };
   } catch (error) {
     await deleteMemberWaiverIfStored(signedWaiver.filename);
+    await deleteMemberGovernmentIdIfStored(input.governmentIdUrl);
     throw error;
   }
 }
 
 /**
- * Member self-registration — PENDING until staff verifies the uploaded photo.
+ * Member self-registration — PENDING until an admin verifies government ID,
+ * waiver PDF, and profile photo.
  *
- * @param input - Form fields including password and photo filename
+ * @param input - Form fields including password, photo, and gov ID filenames
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
  */
@@ -325,6 +332,7 @@ export async function selfRegisterMember(input: SelfRegisterInput) {
             emergencyContactName: input.emergencyContactName,
             emergencyContactPhone: input.emergencyContactPhone,
             photoUrl: input.photoUrl,
+            governmentIdUrl: input.governmentIdUrl,
             membershipStatus: "PENDING",
             dateOfBirth: dob,
             waiverSigned: true,
@@ -349,8 +357,9 @@ export async function selfRegisterMember(input: SelfRegisterInput) {
               waiverVersion: signedWaiver.version,
               waiverPdfUrl: signedWaiver.filename,
               waiverPdfSha256: signedWaiver.sha256,
+              governmentIdUrl: input.governmentIdUrl,
               source: "self",
-              pendingPhotoVerification: true,
+              pendingAdminVerification: true,
             },
           },
           tx
@@ -366,12 +375,15 @@ export async function selfRegisterMember(input: SelfRegisterInput) {
     };
   } catch (error) {
     await deleteMemberWaiverIfStored(signedWaiver.filename);
+    await deleteMemberGovernmentIdIfStored(input.governmentIdUrl);
     throw error;
   }
 }
 
 /**
- * Lists members awaiting staff photo verification.
+ * Lists members awaiting admin verification of gov ID + waiver + profile photo.
+ * Includes client URLs for admin review (gov ID + waiver PDF).
+ *
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
  */
@@ -383,14 +395,27 @@ export async function listPendingMembers() {
       user: { select: { id: true, email: true } },
     },
   });
-  return members.map((m) => withClientPhotoUrl(m));
+  return members.map((m) => {
+    const withPhoto = withClientPhotoUrl(m);
+    return {
+      ...withPhoto,
+      // Admin-only GET routes; volunteers will receive 403 if they open these.
+      governmentIdUrl: m.governmentIdUrl
+        ? memberGovernmentIdSrc(m.id)
+        : null,
+      hasWaiverPdf: Boolean(m.waiverPdfUrl),
+      waiverPdfSrc: m.waiverPdfUrl
+        ? `/api/members/${m.id}/waiver`
+        : null,
+    };
+  });
 }
 
 /**
- * Approves a PENDING self-registration after staff reviews the photo.
+ * Approves a PENDING registration after an admin reviews gov ID + waiver PDF.
  *
  * @param memberId - Pending member id
- * @param approvedByUserId - Volunteer/admin performing approval
+ * @param approvedByUserId - Admin performing approval
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
  */
@@ -424,11 +449,11 @@ export async function approveMemberRegistration(
 }
 
 /**
- * Rejects a PENDING registration by deleting the member + user (and photo).
- * Frees email/phone so the person can self-register again.
+ * Rejects a PENDING registration by deleting the member + user and stored
+ * artifacts (profile photo, government ID, waiver PDF). Frees email/phone.
  *
  * @param memberId - Pending member id
- * @param rejectedByUserId - Staff user rejecting
+ * @param rejectedByUserId - Admin rejecting
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
  */
@@ -460,8 +485,62 @@ export async function rejectMemberRegistration(
   });
 
   await deleteMemberPhotoIfStored(existing.photoUrl);
+  await deleteMemberGovernmentIdIfStored(existing.governmentIdUrl);
+  await deleteMemberWaiverIfStored(existing.waiverPdfUrl);
 
   // Member first (registeredBy may point at the same user), then the User row.
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.member.delete({ where: { id: memberId } });
+    await tx.user.delete({ where: { id: existing.userId } });
+  });
+
+  return { deleted: true as const, memberId };
+}
+
+/**
+ * Hard-deletes any member account (ACTIVE/PENDING/INACTIVE) and stored files.
+ * Admin-only path so fake or mistaken accounts can be remade with the same email.
+ *
+ * @param memberId - Member to erase
+ * @param deletedByUserId - Admin performing the delete
+ * @author Muhammad Naheen Mahboob
+ */
+export async function deleteMemberHard(
+  memberId: string,
+  deletedByUserId: string
+) {
+  const existing = await prisma.member.findUnique({
+    where: { id: memberId },
+    include: { user: { select: { id: true, email: true, role: true } } },
+  });
+  if (!existing) throw new Error("Member not found");
+  if (existing.user.role !== "MEMBER") {
+    throw new Error(
+      "Only member accounts can be deleted here. Change staff roles from Admin → Users."
+    );
+  }
+  if (existing.userId === deletedByUserId) {
+    throw new Error("You cannot delete your own account");
+  }
+
+  await writeAuditLog({
+    actionType: AuditAction.MEMBER_DELETED,
+    performedByUserId: deletedByUserId,
+    details: {
+      deleted: true,
+      memberId: existing.id,
+      fullName: existing.fullName,
+      phone: existing.phone,
+      email: existing.user.email,
+      membershipStatus: existing.membershipStatus,
+    },
+  });
+
+  await deleteMemberPhotoIfStored(existing.photoUrl);
+  await deleteMemberPhotoIfStored(existing.pendingPhotoUrl);
+  await deleteMemberGovernmentIdIfStored(existing.governmentIdUrl);
+  await deleteMemberWaiverIfStored(existing.waiverPdfUrl);
+
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.member.delete({ where: { id: memberId } });
     await tx.user.delete({ where: { id: existing.userId } });

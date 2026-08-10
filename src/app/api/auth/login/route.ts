@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Your registration is awaiting staff photo verification. Please try again later.",
+            "Your registration is awaiting admin verification of your government ID and waiver. Please try again later.",
         },
         { status: 403 }
       );

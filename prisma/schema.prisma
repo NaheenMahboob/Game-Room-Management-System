@@ -84,6 +84,8 @@ model Member {
   photoUrl               String
   // Self-service retake awaiting staff approval (current photoUrl stays until then).
   pendingPhotoUrl        String?
+  // On-disk filename under storage/government-ids/ (gov ID photo for admin review).
+  governmentIdUrl        String?
   membershipStatus       MembershipStatus @default(ACTIVE)
   dateOfBirth            DateTime?
   waiverSigned           Boolean          @default(false)

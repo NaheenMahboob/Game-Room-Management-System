@@ -33,6 +33,14 @@ export const registerMemberSchema = z.object({
     .string()
     .trim()
     .regex(/^[\w.-]+\.(jpe?g|png|webp)$/i, "Invalid photo filename"),
+  // Government ID photo filename under storage/government-ids/.
+  governmentIdUrl: z
+    .string()
+    .trim()
+    .regex(
+      /^(gid|self-gid|reg-gid)-[\w.-]+\.(jpe?g|png|webp)$/i,
+      "Invalid government ID filename"
+    ),
   dateOfBirth: z.string().optional(),
   waiverSigned: z.literal(true),
   waiverSignature: z.string().trim().min(1),

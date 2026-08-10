@@ -60,6 +60,10 @@ next-env.d.ts
 /storage/waivers/*
 !/storage/waivers/.gitkeep
 
+# private government ID photos (outside public/)
+/storage/government-ids/*
+!/storage/government-ids/.gitkeep
+
 # Full backup bundles (SQL + photos + .env) — keep private; never commit
 /backups/*
 !/backups/.gitkeep

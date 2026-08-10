@@ -22,6 +22,10 @@ type PhotoCaptureProps = {
  * @author Mashrur Khandaker
  */
   onChange: (dataUrl: string | null) => void;
+  /** Optional heading above the capture controls (default: profile photo).
+   * @author Muhammad Naheen Mahboob
+   */
+  label?: string;
 };
 
 /**
@@ -31,7 +35,11 @@ type PhotoCaptureProps = {
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
  */
-export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
+export function PhotoCapture({
+  value,
+  onChange,
+  label = "Profile photo *",
+}: PhotoCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
@@ -129,7 +137,7 @@ export function PhotoCapture({ value, onChange }: PhotoCaptureProps) {
 
   return (
     <div className="space-y-3 rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
-      <p className="text-sm font-semibold text-slate-200">Profile photo *</p>
+      <p className="text-sm font-semibold text-slate-200">{label}</p>
       {value ? (
         <div className="relative inline-block">
           {/* eslint-disable-next-line @next/next/no-img-element */}

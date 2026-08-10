@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Public member self-registration (password + photo + email checks).
- * Account stays PENDING until a volunteer/admin verifies the photo at the desk.
+ * Public member self-registration (password + profile photo + government ID + waiver).
+ * Account stays PENDING until an admin verifies the government ID and signed waiver.
  *
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
@@ -10,14 +10,17 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { uploadMemberPhotoDataUrl } from "@/lib/uploads/client";
+import {
+  uploadGovernmentIdDataUrl,
+  uploadMemberPhotoDataUrl,
+} from "@/lib/uploads/client";
 import { PhotoCapture } from "@/components/dashboard/PhotoCapture";
 import { SignaturePad } from "@/components/dashboard/SignaturePad";
 import { WaiverAgreement } from "@/components/dashboard/WaiverAgreement";
 import { PasswordField } from "@/components/auth/PasswordField";
 
 /**
- * Self-service registration page: uploads photo first, then creates a PENDING member.
+ * Self-service registration page: uploads photos first, then creates a PENDING member.
  *
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
@@ -28,6 +31,7 @@ export default function PortalRegisterPage() {
   const [done, setDone] = useState(false);
   // data: URL preview until upload returns a storage filename.
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [govIdPreview, setGovIdPreview] = useState<string | null>(null);
   const [signature, setSignature] = useState("");
   const [form, setForm] = useState({
     fullName: "",
@@ -42,7 +46,7 @@ export default function PortalRegisterPage() {
   });
 
   /**
-   * Validates required photo/waiver/password, uploads the image, then registers.
+   * Validates required photos/waiver/password, uploads images, then registers.
    *
    * @author Muhammad Naheen Mahboob
    * @author Mashrur Khandaker
@@ -53,6 +57,10 @@ export default function PortalRegisterPage() {
 
     if (!photoPreview) {
       setError("Profile photo is required");
+      return;
+    }
+    if (!govIdPreview) {
+      setError("Government ID photo is required");
       return;
     }
     if (!signature.trim()) {
@@ -70,10 +78,14 @@ export default function PortalRegisterPage() {
 
     setLoading(true);
     try {
-      // Upload before create so the API stores only a private filename, not a data URL.
+      // Upload before create so the API stores only private filenames, not data URLs.
       const photoUrl = await uploadMemberPhotoDataUrl(
         photoPreview,
         "/api/uploads/registration-photo"
+      );
+      const governmentIdUrl = await uploadGovernmentIdDataUrl(
+        govIdPreview,
+        "/api/uploads/registration-government-id"
       );
 
       const res = await fetch("/api/auth/register", {
@@ -88,6 +100,7 @@ export default function PortalRegisterPage() {
           emergencyContactPhone: form.emergencyContactPhone,
           dateOfBirth: form.dateOfBirth || undefined,
           photoUrl,
+          governmentIdUrl,
           waiverSigned: true,
           waiverSignature: signature,
           parentalConsent: form.parentalConsent,
@@ -148,8 +161,9 @@ export default function PortalRegisterPage() {
           Registration submitted
         </h1>
         <p className="text-slate-300">
-          A volunteer will verify your photo before you can sign in. You will
-          use the email and password you just chose once approved.
+          An admin will verify your government ID and signed waiver before you
+          can sign in. You will use the email and password you just chose once
+          approved.
         </p>
         <Link
           href="/portal/login"
@@ -197,6 +211,11 @@ export default function PortalRegisterPage() {
         </div>
 
         <PhotoCapture value={photoPreview} onChange={setPhotoPreview} />
+        <PhotoCapture
+          value={govIdPreview}
+          onChange={setGovIdPreview}
+          label="Government ID photo *"
+        />
         <WaiverAgreement />
         <SignaturePad onChange={setSignature} />
 
@@ -222,7 +241,7 @@ export default function PortalRegisterPage() {
 
         <button
           type="submit"
-          disabled={loading || !photoPreview}
+          disabled={loading || !photoPreview || !govIdPreview}
           className="min-h-12 w-full rounded-xl bg-emerald-600 text-lg font-semibold disabled:opacity-60"
         >
           {loading ? "Submitting…" : "Submit registration"}

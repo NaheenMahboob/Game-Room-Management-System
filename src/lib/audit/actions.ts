@@ -14,10 +14,12 @@ export const AuditAction = {
   MEMBER_PHOTO_APPROVED: "MEMBER_PHOTO_APPROVED",
   /** Staff rejected a pending photo retake (pending file removed; live photo kept). */
   MEMBER_PHOTO_REJECTED: "MEMBER_PHOTO_REJECTED",
-  /** Staff approved a PENDING self-registration after photo review. */
+  /** Admin approved a PENDING registration after gov ID + waiver review. */
   MEMBER_APPROVED: "MEMBER_APPROVED",
-  /** Staff rejected a PENDING self-registration. */
+  /** Admin rejected a PENDING registration (account deleted). */
   MEMBER_REJECTED: "MEMBER_REJECTED",
+  /** Admin hard-deleted a member account and stored artifacts. */
+  MEMBER_DELETED: "MEMBER_DELETED",
   /** Member (or desk register) requested room entry — waiting for staff sign-in. */
   CHECK_IN_REQUESTED: "CHECK_IN_REQUESTED",
   /** Member cancelled their waiting check-in request. */

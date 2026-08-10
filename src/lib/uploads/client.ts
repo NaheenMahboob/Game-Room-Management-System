@@ -44,6 +44,10 @@ type UploadResponse = {
  * @author Mashrur Khandaker
  */
   photoUrl?: string;
+  /** Storage filename from government ID upload endpoints.
+   * @author Muhammad Naheen Mahboob
+   */
+  governmentIdUrl?: string;
   /** Updated member from `POST /api/members/[id]/photo` (client API photo path).
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
@@ -84,6 +88,56 @@ export async function uploadMemberPhotoFile(
   }
 
   return photoUrl;
+}
+
+/**
+ * Uploads a government ID image file and returns the storage filename.
+ *
+ * @param file - Image file to upload
+ * @param endpoint - Absolute path of the gov ID upload API route
+ * @returns On-disk filename for `Member.governmentIdUrl`
+ * @author Muhammad Naheen Mahboob
+ */
+export async function uploadGovernmentIdFile(
+  file: File,
+  endpoint: string
+): Promise<string> {
+  const form = new FormData();
+  form.append("file", file);
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    body: form,
+  });
+
+  const data = (await response.json().catch(() => ({}))) as UploadResponse;
+  const governmentIdUrl = data.governmentIdUrl;
+
+  if (!response.ok || !governmentIdUrl) {
+    throw new Error(data.error ?? `Upload failed (${response.status})`);
+  }
+
+  return governmentIdUrl;
+}
+
+/**
+ * Uploads a local preview data URL as a government ID photo.
+ *
+ * @param dataUrl - Camera/file preview (`data:...`) or already-stored filename
+ * @param endpoint - Upload API route to POST against when conversion is needed
+ * @returns Storage filename under `storage/government-ids/`
+ * @author Muhammad Naheen Mahboob
+ */
+export async function uploadGovernmentIdDataUrl(
+  dataUrl: string,
+  endpoint: string
+): Promise<string> {
+  if (/^(gid|self-gid|reg-gid)-[\w.-]+\.(jpe?g|png|webp)$/i.test(dataUrl)) {
+    return dataUrl;
+  }
+
+  const file = dataUrlToFile(dataUrl, "government-id.jpg");
+  return uploadGovernmentIdFile(file, endpoint);
 }
 
 /**

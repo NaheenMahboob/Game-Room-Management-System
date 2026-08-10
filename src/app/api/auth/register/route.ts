@@ -1,9 +1,10 @@
 /**
  * `POST /api/auth/register`
  *
- * Public member self-registration. Creates a PENDING account until staff
- * verifies the uploaded profile photo at the desk.
- * If create fails after the photo was uploaded, the orphan `self-*` file is removed.
+ * Public member self-registration. Creates a PENDING account until an admin
+ * verifies the government ID and signed waiver.
+ * If create fails after uploads, orphan photo / gov ID files are removed.
+ *
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
  */
@@ -13,6 +14,7 @@ import { jsonOk, handleRouteError } from "@/lib/api/http";
 import { selfRegisterMemberSchema } from "@/lib/validation/schemas";
 import { selfRegisterMember } from "@/lib/services/members";
 import { deleteOrphanRegistrationPhoto } from "@/lib/uploads/memberPhoto";
+import { deleteOrphanRegistrationGovernmentId } from "@/lib/uploads/memberGovernmentId";
 import {
   checkRateLimit,
   loginIpKey,
@@ -34,11 +36,13 @@ function clientIp(request: NextRequest): string {
 
 /**
  * Registers a new member with chosen password; account stays PENDING.
+ *
  * @author Muhammad Naheen Mahboob
  * @author Mashrur Khandaker
  */
 export async function POST(request: NextRequest) {
   let uploadedPhotoUrl: string | undefined;
+  let uploadedGovIdUrl: string | undefined;
   try {
     const ip = clientIp(request);
     const key = loginIpKey(`reg:${ip}`);
@@ -56,24 +60,29 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const input = selfRegisterMemberSchema.parse(body);
     uploadedPhotoUrl = input.photoUrl;
+    uploadedGovIdUrl = input.governmentIdUrl;
 
     const result = await selfRegisterMember(input);
-    uploadedPhotoUrl = undefined; // owned by the new member row
+    uploadedPhotoUrl = undefined;
+    uploadedGovIdUrl = undefined;
     recordRateLimitHit(key, 60 * 60 * 1000);
 
     return jsonOk(
       {
         message:
-          "Registration submitted. A volunteer will verify your photo before you can sign in.",
+          "Registration submitted. An admin will verify your government ID and waiver before you can sign in.",
         loginEmail: result.loginEmail,
         memberId: result.member.id,
       },
       201
     );
   } catch (error) {
-    // Upload-then-register: remove the file if the member row was never created.
+    // Upload-then-register: remove files if the member row was never created.
     if (uploadedPhotoUrl) {
       await deleteOrphanRegistrationPhoto(uploadedPhotoUrl);
+    }
+    if (uploadedGovIdUrl) {
+      await deleteOrphanRegistrationGovernmentId(uploadedGovIdUrl);
     }
     return handleRouteError(error);
   }

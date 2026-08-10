@@ -44,6 +44,10 @@ type MemberDetail = MemberHit & {
   waiverSigned: boolean;
   waiverVersion: number;
   waiverPdfUrl?: string | null;
+  /** Admin-only client URL for the stored government ID image. */
+  governmentIdSrc?: string | null;
+  /** Admin-only client URL for the signed waiver PDF. */
+  waiverPdfSrc?: string | null;
   parentalConsent: boolean;
   pendingPhotoUrl?: string | null;
   attendances: { id: string; signInTime: string }[];
@@ -76,6 +80,9 @@ export function MembersClient() {
   /** Local data-URL draft before upload on retake. */
   const [photoDraft, setPhotoDraft] = useState<string | null>(null);
   const [savingPhoto, setSavingPhoto] = useState(false);
+  /** True when the logged-in desk user is an ADMIN (delete + gov ID lookup). */
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   /**
    * Loads a member by id and resets photo-verify / retake UI state.
@@ -128,6 +135,12 @@ export function MembersClient() {
     },
     [toast]
   );
+
+  useEffect(() => {
+    apiFetch<{ user: { role: string } }>("/api/auth/me")
+      .then((data) => setIsAdmin(data.user.role === "ADMIN"))
+      .catch(() => setIsAdmin(false));
+  }, []);
 
   useEffect(() => {
     // Deep-link support: /dashboard/members?memberId=... (e.g. from Currently inside).
@@ -451,11 +464,14 @@ export function MembersClient() {
                 {selected.waiverSigned
                   ? `signed (v${selected.waiverVersion})`
                   : "not signed"}
-                {selected.waiverPdfUrl ? (
+                {selected.waiverPdfSrc || selected.waiverPdfUrl ? (
                   <>
                     {" · "}
                     <a
-                      href={`/api/members/${selected.id}/waiver`}
+                      href={
+                        selected.waiverPdfSrc ??
+                        `/api/members/${selected.id}/waiver`
+                      }
                       target="_blank"
                       rel="noreferrer"
                       className="font-semibold text-emerald-400 underline"
@@ -465,6 +481,18 @@ export function MembersClient() {
                   </>
                 ) : null}
               </p>
+              {isAdmin && selected.governmentIdSrc ? (
+                <p className="text-sm">
+                  <a
+                    href={selected.governmentIdSrc}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-amber-300 underline"
+                  >
+                    Open government ID photo
+                  </a>
+                </p>
+              ) : null}
               <p className="text-sm">
                 Status:{" "}
                 <span
@@ -580,6 +608,37 @@ export function MembersClient() {
             >
               Guest pass
             </button>
+            {isAdmin ? (
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={async () => {
+                  const confirmed = window.confirm(
+                    `Permanently delete ${selected.fullName}?\n\nThis removes their account, photos, government ID, and waiver PDF. The email and phone can be used for a new registration. This cannot be undone.`
+                  );
+                  if (!confirmed) return;
+                  setDeleting(true);
+                  try {
+                    await apiFetch(`/api/members/${selected.id}`, {
+                      method: "DELETE",
+                    });
+                    toast.push("Member deleted");
+                    setSelected(null);
+                    await refreshRoster(q);
+                  } catch (err) {
+                    toast.push(
+                      err instanceof Error ? err.message : "Delete failed",
+                      "error"
+                    );
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                className="min-h-12 rounded-xl bg-red-700 px-5 font-semibold disabled:opacity-60"
+              >
+                {deleting ? "Deleting…" : "Delete member"}
+              </button>
+            ) : null}
           </div>
 
           {selected.loans.length > 0 ? (

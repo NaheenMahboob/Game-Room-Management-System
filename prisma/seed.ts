@@ -278,7 +278,7 @@ async function main() {
     {
       key: "membershipInfo",
       value:
-        "New members can register at the volunteer desk. Bring a photo ID if requested. Members under 18 need a parent or guardian to sign the waiver. After registration you receive a member QR card and portal login.",
+        "New members can register at the volunteer desk or online. Bring a government ID photo for admin verification with the signed waiver. Members under 18 need a parent or guardian to sign. After an admin approves, you receive portal login access and a member QR card.",
     },
     {
       key: "equipmentTimeLimits",
