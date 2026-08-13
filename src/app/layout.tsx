@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { I18nProvider } from "@/components/i18n/I18nProvider";
+import { AttributionFooter } from "@/components/site/AttributionFooter";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -40,7 +41,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <I18nProvider>{children}</I18nProvider>
+        <I18nProvider>
+          <div className="flex min-h-screen flex-col">
+            <div className="flex-1">{children}</div>
+            <AttributionFooter />
+          </div>
+        </I18nProvider>
       </body>
     </html>
   );

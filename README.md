@@ -1,9 +1,12 @@
 # Game Room Management System
 
-Community game room management for a local mosque: member registration (desk + self-service with photo verification), attendance (sign-in/sign-out), per-unit equipment loans, guest passes, a TV-friendly public status board, a member self-service portal, and a tablet-first volunteer/admin dashboard with offline PWA support.
+Community game room management originally built as volunteer software for [London Muslim Mosque](https://londonmosque.ca/) (London, Ontario): member registration (desk + self-service with photo verification), attendance (sign-in/sign-out), per-unit equipment loans, guest passes, a TV-friendly public status board, a member self-service portal, and a tablet-first volunteer/admin dashboard with offline PWA support.
+
+Copyright © 2026 [Muhammad Naheen Mahboob](https://github.com/NaheenMahboob) and Mashrur Khandaker. Released under the [MIT License](LICENSE).
 
 ## Table of contents
 
+- [Authors](#authors)
 - [What this README covers](#what-this-readme-covers)
 - [Features](#features)
 - [Tech stack](#tech-stack)
@@ -19,7 +22,17 @@ Community game room management for a local mosque: member registration (desk + s
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
+- [Attribution agreement](#attribution-agreement)
 - [Status](#status)
+
+## Authors
+
+This project was designed and developed by:
+
+- **Muhammad Naheen Mahboob**
+- **Mashrur Khandaker**
+
+It was created as unpaid volunteer software for London Muslim Mosque. Copyright remains with the authors. Others (including the mosque) may use and modify the software under the MIT License, provided this copyright notice is kept. The authors may list this work on résumés, portfolios, and GitHub.
 
 ## What this README covers
 
@@ -39,7 +52,8 @@ Good project READMEs usually include a short pitch, features, stack, setup, usag
 | Deployment | How to ship to production |
 | Troubleshooting | Common local failures |
 | Contributing | How to propose changes |
-| License / status | Ownership and maturity |
+| Authors | Who built it (résumé / portfolio attribution) |
+| License / status | MIT copyright and project maturity |
 
 Keep these current when behavior or setup changes.
 
@@ -283,19 +297,27 @@ Serve over HTTPS behind a reverse proxy (Caddy/Nginx) on port 3000. Local Postgr
 
 ## Contributing
 
-This is a private community deployment repo. If you have access and want to change something:
-
 1. Create a branch from `main`
 2. Keep changes focused; match existing TypeScript / Tailwind patterns
 3. Add or update module-level TSDoc on new `src/**/*.ts` exports
 4. Run `npm run lint` and smoke-test the affected portal (public / portal / dashboard)
 5. Open a pull request describing why the change is needed
 
-Do not commit `.env`, real secrets, or generated Prisma Client under `src/generated/`.
+Do not commit `.env`, real secrets, production member data, or generated Prisma Client under `src/generated/`. Keep the copyright notice and MIT license text in all copies.
 
 ## License
 
-No public license file is published yet. Treat the code as proprietary to the mosque community project unless a `LICENSE` is added later.
+Copyright © 2026 Muhammad Naheen Mahboob and Mashrur Khandaker.
+
+This project is licensed under the [MIT License](LICENSE). You may use, copy, modify, and distribute the software, including commercially, provided the copyright notice and permission notice are included in all copies or substantial portions of the Software.
+
+Modified versions must retain this attribution. The original authors remain Muhammad Naheen Mahboob and Mashrur Khandaker.
+
+Every page of the running app shows a footer: “Developed by Muhammad Naheen Mahboob and Mashrur Khandaker for London Muslim Mosque (London, Ontario). © 2026. MIT License.”
+
+## Attribution agreement
+
+A printable signing copy for the authors and London Muslim Mosque is in [docs/LMM-Software-Attribution-Agreement.md](docs/LMM-Software-Attribution-Agreement.md). Print it, have both authors and an authorized mosque signatory sign, and keep a copy. It does not need to be filed with a government office.
 
 ## Status
 
