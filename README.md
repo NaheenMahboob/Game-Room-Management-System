@@ -315,10 +315,6 @@ Modified versions must retain this attribution. The original authors remain Muha
 
 Every page of the running app shows a footer: “Developed by Muhammad Naheen Mahboob and Mashrur Khandaker for London Muslim Mosque (London, Ontario). © 2026. MIT License.”
 
-## Attribution agreement
-
-A printable signing copy for the authors and London Muslim Mosque is in [docs/LMM-Software-Attribution-Agreement.md](docs/LMM-Software-Attribution-Agreement.md). Print it, have both authors and an authorized mosque signatory sign, and keep a copy. It does not need to be filed with a government office.
-
 ## Status
 
 Modules 1–7 are complete: schema/seed, auth/RBAC, core APIs, volunteer kiosk, public + member portals, admin suite, i18n + offline PWA + deploy docs. TypeScript under `src/**/*.ts` uses module-level TSDoc on functions and declarations.
