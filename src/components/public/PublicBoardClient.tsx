@@ -3,6 +3,8 @@
 /**
  * TV / lobby public status board.
  * Header CTA is “Member login” for guests, or “My portal” when already signed in.
+ * Announcements, events, and rules scroll inside panels so long copy does not
+ * push occupancy / availability off a wall display.
  *
  * @author Muhammad Naheen Mahboob
  */
@@ -13,6 +15,7 @@ import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { useLocaleState } from "@/components/i18n/I18nProvider";
 import { rtlLocales } from "@/i18n/config";
+import { ScrollPanel } from "@/components/ui/ScrollPanel";
 
 type Availability = {
   type: string;
@@ -175,47 +178,54 @@ export function PublicBoardClient({
 
           <section className="rounded-2xl border border-white/10 bg-slate-950/55 p-5 lg:col-span-2">
             <h2 className="mb-4 text-2xl font-semibold">{t("announcements")}</h2>
-            <div className="space-y-4">
-              {(board?.announcements ?? []).length === 0 ? (
-                <p className="text-slate-400">{t("noAnnouncements")}</p>
-              ) : (
-                board?.announcements.map((a) => (
-                  <article
-                    key={a.id}
-                    className="rounded-xl border border-teal-500/20 bg-teal-950/20 p-4"
-                  >
-                    <h3 className="text-xl font-semibold text-teal-100">
-                      {a.title}
-                    </h3>
-                    <p className="mt-2 text-slate-200">{a.content}</p>
-                  </article>
-                ))
-              )}
-            </div>
+            {/* Long announcement lists scroll; occupancy/availability stay fixed above. */}
+            <ScrollPanel label={t("announcements")} density="section">
+              <div className="space-y-4 p-1">
+                {(board?.announcements ?? []).length === 0 ? (
+                  <p className="text-slate-400">{t("noAnnouncements")}</p>
+                ) : (
+                  board?.announcements.map((a) => (
+                    <article
+                      key={a.id}
+                      className="rounded-xl border border-teal-500/20 bg-teal-950/20 p-4"
+                    >
+                      <h3 className="text-xl font-semibold text-teal-100">
+                        {a.title}
+                      </h3>
+                      <p className="mt-2 text-slate-200">{a.content}</p>
+                    </article>
+                  ))
+                )}
+              </div>
+            </ScrollPanel>
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-slate-950/55 p-5">
             <h2 className="mb-4 text-2xl font-semibold">{t("events")}</h2>
-            <ul className="space-y-3">
-              {(board?.events ?? []).map((event) => (
-                <li key={event.id} className="rounded-xl bg-slate-900/70 p-3">
-                  <p className="font-semibold">{event.title}</p>
-                  <p className="text-sm text-teal-200">
-                    {new Date(event.eventDate).toLocaleString()}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-300">
-                    {event.description}
-                  </p>
-                </li>
-              ))}
-            </ul>
+            <ScrollPanel label={t("events")} density="section">
+              <ul className="space-y-3 p-1">
+                {(board?.events ?? []).map((event) => (
+                  <li key={event.id} className="rounded-xl bg-slate-900/70 p-3">
+                    <p className="font-semibold">{event.title}</p>
+                    <p className="text-sm text-teal-200">
+                      {new Date(event.eventDate).toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-300">
+                      {event.description}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </ScrollPanel>
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-slate-950/55 p-5">
             <h2 className="mb-4 text-2xl font-semibold">{t("rules")}</h2>
-            <pre className="whitespace-pre-wrap font-sans text-base leading-relaxed text-slate-200">
-              {board?.communityRules}
-            </pre>
+            <ScrollPanel label={t("rules")} density="section">
+              <pre className="whitespace-pre-wrap p-1 font-sans text-base leading-relaxed text-slate-200">
+                {board?.communityRules}
+              </pre>
+            </ScrollPanel>
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-slate-950/55 p-5">
