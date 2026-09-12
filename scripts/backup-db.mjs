@@ -132,7 +132,7 @@ Created: ${new Date().toISOString()}
 Contents
 - database.sql      Postgres dump (schema + data)
 - storage/members   Photo files referenced by Member.photoUrl
-- storage/waivers   Signed waiver PDFs referenced by Member.waiverPdfUrl
+- storage/waivers   Signed waiver PDFs + templates/ (legal template PDFs)
 - storage/government-ids  Government ID photos referenced by Member.governmentIdUrl
 - .env              App secrets (DATABASE_URL, JWT_SECRET, …) — keep private
 

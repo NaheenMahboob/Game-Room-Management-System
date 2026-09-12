@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Loads and displays the current waiver text before the signature pad.
+ * Loads and embeds the current waiver template PDF before the signature pad.
  *
  * @author Muhammad Naheen Mahboob
  */
@@ -14,11 +14,11 @@ type WaiverAgreementProps = {
 };
 
 /**
- * Fetches `GET /api/waivers/current` and renders the legal copy to scroll/read.
+ * Fetches `GET /api/waivers/current` and embeds the template PDF for reading.
  */
 export function WaiverAgreement({ className }: WaiverAgreementProps) {
   const [version, setVersion] = useState<number | null>(null);
-  const [text, setText] = useState<string | null>(null);
+  const [pdfSrc, setPdfSrc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export function WaiverAgreement({ className }: WaiverAgreementProps) {
         const res = await fetch("/api/waivers/current");
         const data = (await res.json()) as {
           version?: number;
-          text?: string;
+          pdfSrc?: string;
           error?: string;
         };
         if (!res.ok) {
@@ -36,7 +36,7 @@ export function WaiverAgreement({ className }: WaiverAgreementProps) {
         }
         if (cancelled) return;
         setVersion(data.version ?? null);
-        setText(data.text ?? "");
+        setPdfSrc(data.pdfSrc ?? null);
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -65,11 +65,23 @@ export function WaiverAgreement({ className }: WaiverAgreementProps) {
       </div>
       {error ? (
         <p className="text-sm text-red-300">{error}</p>
-      ) : text == null ? (
+      ) : pdfSrc == null ? (
         <p className="text-sm text-slate-400">Loading waiver…</p>
       ) : (
-        <div className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-700 bg-slate-950/80 p-3 text-sm leading-relaxed text-slate-200">
-          {text}
+        <div className="space-y-2">
+          <iframe
+            title={`Liability waiver version ${version ?? ""}`}
+            src={pdfSrc}
+            className="h-72 w-full rounded-xl border border-slate-700 bg-slate-950"
+          />
+          <a
+            href={pdfSrc}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block text-sm font-medium text-emerald-400 hover:text-emerald-300"
+          >
+            Open full PDF
+          </a>
         </div>
       )}
       <p className="text-xs text-slate-400">

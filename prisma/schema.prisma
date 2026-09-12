@@ -218,7 +218,10 @@ model Event {
 model Waiver {
   id              String   @id @default(cuid())
   version         Int      @unique
-  text            String
+  // Legacy plain-text body (optional). New versions use templatePdfUrl instead.
+  text            String?
+  // Basename under storage/waivers/templates/ (e.g. template-v2.pdf).
+  templatePdfUrl  String?
   createdByUserId String
   createdBy       User     @relation(fields: [createdByUserId], references: [id])
   createdAt       DateTime @default(now())

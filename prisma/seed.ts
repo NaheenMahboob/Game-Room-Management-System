@@ -1,5 +1,7 @@
 import { PrismaClient } from "../src/generated/prisma";
 import bcrypt from "bcryptjs";
+import { buildWaiverTemplatePdfFromText } from "../src/lib/waivers/templateFromText";
+import { saveWaiverTemplatePdf } from "../src/lib/uploads/waiverTemplate";
 
 const prisma = new PrismaClient();
 
@@ -327,20 +329,32 @@ async function main() {
 
   console.log(`Settings upserted: ${settings.length}`);
 
+  const waiverVersion = 2;
+  const templateBuffer = await buildWaiverTemplatePdfFromText(
+    DEFAULT_WAIVER_TEXT,
+    waiverVersion
+  );
+  const templatePdfUrl = await saveWaiverTemplatePdf(
+    waiverVersion,
+    templateBuffer
+  );
+
   await prisma.waiver.upsert({
-    where: { version: 2 },
+    where: { version: waiverVersion },
     update: {
-      text: DEFAULT_WAIVER_TEXT,
+      text: null,
+      templatePdfUrl,
       createdByUserId: admin.id,
     },
     create: {
-      version: 2,
-      text: DEFAULT_WAIVER_TEXT,
+      version: waiverVersion,
+      text: null,
+      templatePdfUrl,
       createdByUserId: admin.id,
     },
   });
 
-  console.log("Waiver version 2 ready");
+  console.log(`Waiver version ${waiverVersion} template ready (${templatePdfUrl})`);
 
   const existingAnnouncement = await prisma.announcement.findFirst({
     where: { title: "Welcome to the Game Room" },

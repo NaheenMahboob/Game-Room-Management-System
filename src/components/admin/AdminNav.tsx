@@ -10,10 +10,10 @@ const LINKS = [
   { href: "/dashboard/admin/users", label: "Users" },
   { href: "/dashboard/admin/shifts", label: "Shifts" },
   { href: "/dashboard/admin/content", label: "Content" },
+  { href: "/dashboard/admin/waivers", label: "Waivers" },
   { href: "/dashboard/admin/settings", label: "Settings" },
   { href: "/dashboard/admin/audit", label: "Audit" },
 ];
-
 export function AdminNav() {
   const pathname = usePathname();
   return (

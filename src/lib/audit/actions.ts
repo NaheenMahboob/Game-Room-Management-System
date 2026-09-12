@@ -38,6 +38,8 @@ export const AuditAction = {
   GUEST_SIGNED_IN: "GUEST_SIGNED_IN",
   GUEST_SIGNED_OUT: "GUEST_SIGNED_OUT",
   WAIVER_SIGNED: "WAIVER_SIGNED",
+  /** Admin uploaded a new versioned waiver template PDF. */
+  WAIVER_TEMPLATE_UPLOADED: "WAIVER_TEMPLATE_UPLOADED",
 } as const;
 
 /** Union of all known {@link AuditAction} string values. */

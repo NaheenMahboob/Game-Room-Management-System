@@ -150,7 +150,7 @@ Creates a timestamped folder:
 backups/gameroom-YYYYMMDD-HHMMSS/
   database.sql          # Postgres dump
   storage/members/      # Profile photos (names match DB photoUrl)
-  storage/waivers/      # Signed waiver PDFs (names match DB waiverPdfUrl)
+  storage/waivers/      # Signed waiver PDFs + templates/ (legal PDF templates)
   storage/government-ids/ # Government ID photos (names match DB governmentIdUrl)
   .env                  # Secrets — do not share or commit
   RESTORE.txt           # Short restore steps
@@ -196,6 +196,17 @@ Restore outline: put `.env`, `storage/members`, `storage/waivers`, and `storage/
 
 Change these passwords before any real deployment.
 
+### Liability waiver PDF
+
+Legal copy is a **versioned PDF template**, not text in seed/code.
+
+1. Edit the waiver in Word/Acrobat (or have counsel send a PDF).
+2. Prefer **Admin → Waivers → Publish PDF** (auto-increments version and updates `waiverVersion`).
+3. Registration embeds `/api/waivers/current/pdf`; signing stamps a signature page onto a copy under `storage/waivers/`.
+4. Manual IT path: place `template-vN.pdf` in `storage/waivers/templates/`, ensure a `Waiver` row for version `N` with `templatePdfUrl`, and set setting `waiverVersion` to `N`.
+
+Members whose signed `waiverVersion` is behind the setting must re-sign before check-in (existing attendance rule).
+
 ## Project structure
 
 ```
@@ -212,6 +223,7 @@ Change these passwords before any real deployment.
 │   └── types/          # ambient type declarations
 ├── storage/members/    # private member photos (local disk)
 ├── storage/waivers/    # private signed waiver PDFs (local disk)
+│   └── templates/      # versioned legal template PDFs (template-vN.pdf)
 ├── storage/government-ids/ # private government ID photos (local disk)
 ├── docker-compose.yml  # local Postgres
 └── .env.example        # env template
@@ -226,7 +238,7 @@ Change these passwords before any real deployment.
 | Own profile / QR / “I’m here” check-in / history / announcements | — | yes | yes\* | yes\* |
 | Waiting-to-enter list, sign-in/out, loans, desk register, guests, checklist | — | — | yes | yes |
 | Pending member photo approval queue | — | — | yes | yes |
-| Inventory, users, analytics, audit, settings, shifts, content | — | — | — | yes |
+| Inventory, users, analytics, audit, settings, shifts, content, waivers | — | — | — | yes |
 
 \*Staff with a linked member profile can also use the member portal. Only the bootstrap admin (`ADMIN_EMAIL`) can change another ADMIN’s role; other admins may manage members/volunteers and promote to admin.
 
@@ -281,7 +293,7 @@ Serve over HTTPS behind a reverse proxy (Caddy/Nginx) on port 3000. Local Postgr
 - [ ] Run `prisma migrate deploy` before first traffic
 - [ ] Change default admin / volunteer / member passwords
 - [ ] Confirm the volunteer tablet can install the PWA over HTTPS
-- [ ] Confirm `storage/members/`, `storage/waivers/`, and `storage/government-ids/` are writable and not publicly browsable
+- [ ] Confirm `storage/members/`, `storage/waivers/` (incl. `templates/`), and `storage/government-ids/` are writable and not publicly browsable
 
 ## Troubleshooting
 

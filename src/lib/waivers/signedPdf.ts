@@ -1,6 +1,6 @@
 /**
- * Builds a signed waiver PDF: current legal text + member details + stamped
- * signature (drawn PNG or typed legal name), then SHA-256 for integrity.
+ * Builds a signed waiver PDF: loads the versioned template PDF, appends a
+ * member details + signature page, then SHA-256 for integrity.
  *
  * @author Muhammad Naheen Mahboob
  */
@@ -10,8 +10,14 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { prisma } from "@/lib/prisma";
 import { getCurrentWaiverVersion } from "@/lib/settings";
 import { saveMemberWaiverPdf } from "@/lib/uploads/memberWaiver";
+import {
+  currentWaiverTemplateSrc,
+  readWaiverTemplateFile,
+  saveWaiverTemplatePdf,
+} from "@/lib/uploads/waiverTemplate";
+import { buildWaiverTemplatePdfFromText } from "@/lib/waivers/templateFromText";
 
-/** Fallback copy when the `Waiver` row for the current version is missing. */
+/** Fallback copy only used to materialize a missing template from legacy `text`. */
 const FALLBACK_WAIVER_TEXT = `
 COMMUNITY GAME ROOM LIABILITY WAIVER AND RELEASE
 
@@ -54,50 +60,59 @@ export type BuildSignedWaiverInput = {
   /** Canvas `data:image/png;base64,...` or typed legal name. */
   signature: string;
   waiverVersion: number;
-  waiverText: string;
+  /** On-disk template basename under `storage/waivers/templates/`. */
+  templatePdfUrl: string;
   signedAt?: Date;
 };
 
 /**
- * Loads the current waiver version number and body text from settings / Waiver.
+ * Ensures the current waiver version has a readable template on disk.
+ * Legacy rows with only `text` are backfilled once into a template PDF.
+ *
+ * @throws when no template file exists and no legacy text can be used
  */
 export async function getCurrentWaiverContent(): Promise<{
   version: number;
-  text: string;
+  templateFilename: string;
+  pdfSrc: string;
 }> {
   const version = await getCurrentWaiverVersion();
-  const row = await prisma.waiver.findUnique({ where: { version } });
+  let row = await prisma.waiver.findUnique({ where: { version } });
+
+  if (!row) {
+    throw new Error(
+      `Waiver version ${version} is not configured. Upload a template in Admin → Waivers.`
+    );
+  }
+
+  let templateFilename = row.templatePdfUrl?.trim() || null;
+  let file = templateFilename
+    ? await readWaiverTemplateFile(templateFilename)
+    : null;
+
+  // Backfill: generate template from legacy DB text if the PDF is missing.
+  if (!file) {
+    const legacyText = row.text?.trim() || FALLBACK_WAIVER_TEXT;
+    const buffer = await buildWaiverTemplatePdfFromText(legacyText, version);
+    templateFilename = await saveWaiverTemplatePdf(version, buffer);
+    row = await prisma.waiver.update({
+      where: { version },
+      data: { templatePdfUrl: templateFilename },
+    });
+    file = await readWaiverTemplateFile(templateFilename);
+  }
+
+  if (!file || !templateFilename) {
+    throw new Error(
+      `Waiver template PDF for version ${version} is missing on disk. Upload a PDF in Admin → Waivers or place template-v${version}.pdf under storage/waivers/templates/.`
+    );
+  }
+
   return {
     version,
-    text: row?.text?.trim() || FALLBACK_WAIVER_TEXT,
+    templateFilename,
+    pdfSrc: currentWaiverTemplateSrc(),
   };
-}
-
-/**
- * Word-wraps text to roughly `maxChars` per line for Helvetica drawing.
- */
-function wrapLines(text: string, maxChars: number): string[] {
-  const lines: string[] = [];
-  for (const paragraph of text.replace(/\r\n/g, "\n").split("\n")) {
-    const trimmed = paragraph.trim();
-    if (!trimmed) {
-      lines.push("");
-      continue;
-    }
-    const words = trimmed.split(/\s+/);
-    let current = "";
-    for (const word of words) {
-      const next = current ? `${current} ${word}` : word;
-      if (next.length <= maxChars) {
-        current = next;
-      } else {
-        if (current) lines.push(current);
-        current = word;
-      }
-    }
-    if (current) lines.push(current);
-  }
-  return lines;
 }
 
 /**
@@ -110,7 +125,7 @@ function pngBytesFromDataUrl(signature: string): Uint8Array | null {
 }
 
 /**
- * Creates a multi-page PDF with waiver text and a stamped signature block.
+ * Loads the template PDF and appends a signature / member details page.
  *
  * @returns PDF bytes ready to write to disk
  */
@@ -118,7 +133,23 @@ export async function buildSignedWaiverPdf(
   input: BuildSignedWaiverInput
 ): Promise<Buffer> {
   const signedAt = input.signedAt ?? new Date();
+  const template = await readWaiverTemplateFile(input.templatePdfUrl);
+  if (!template) {
+    throw new Error(
+      `Waiver template file "${input.templatePdfUrl}" was not found`
+    );
+  }
+
+  const templateDoc = await PDFDocument.load(template.buffer);
   const pdfDoc = await PDFDocument.create();
+  const copiedPages = await pdfDoc.copyPages(
+    templateDoc,
+    templateDoc.getPageIndices()
+  );
+  for (const page of copiedPages) {
+    pdfDoc.addPage(page);
+  }
+
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
@@ -128,7 +159,6 @@ export async function buildSignedWaiverPdf(
   const maxWidth = pageWidth - margin * 2;
   const bodySize = 10;
   const lineHeight = 14;
-  const charsPerLine = 95;
 
   let page = pdfDoc.addPage([pageWidth, pageHeight]);
   let y = pageHeight - margin;
@@ -161,10 +191,7 @@ export async function buildSignedWaiverPdf(
     y -= lineHeight + (size > bodySize ? 4 : 0);
   };
 
-  drawText("COMMUNITY GAME ROOM — SIGNED LIABILITY WAIVER", {
-    size: 14,
-    bold: true,
-  });
+  drawText("SIGNATURE PAGE", { size: 14, bold: true });
   y -= 6;
   drawText(`Waiver version: ${input.waiverVersion}`, { size: 10, bold: true });
   drawText(`Signed at (UTC): ${signedAt.toISOString()}`, { size: 9 });
@@ -184,23 +211,7 @@ export async function buildSignedWaiverPdf(
       input.parentalConsent ? "Yes" : "No"
     }`
   );
-  y -= 10;
-
-  drawText("Agreement text", { size: 11, bold: true });
-  y -= 4;
-  for (const line of wrapLines(input.waiverText, charsPerLine)) {
-    if (line === "") {
-      y -= lineHeight / 2;
-      continue;
-    }
-    drawText(line, { size: bodySize });
-  }
-
   y -= 16;
-  if (y < margin + 160) {
-    page = pdfDoc.addPage([pageWidth, pageHeight]);
-    y = pageHeight - margin;
-  }
 
   drawText("Signature", { size: 11, bold: true });
   y -= 4;
@@ -247,7 +258,7 @@ export async function buildSignedWaiverPdf(
   }
 
   drawText(
-    `I acknowledge that I have read and agree to the waiver text above (version ${input.waiverVersion}).`,
+    `I acknowledge that I have read and agree to the attached waiver (version ${input.waiverVersion}).`,
     { size: 9 }
   );
 
@@ -266,18 +277,18 @@ export function sha256Hex(buffer: Buffer): string {
  * Builds the signed PDF, writes it under `storage/waivers/`, returns filename + hash.
  */
 export async function createAndStoreSignedWaiverPdf(
-  input: Omit<BuildSignedWaiverInput, "waiverVersion" | "waiverText"> & {
+  input: Omit<BuildSignedWaiverInput, "waiverVersion" | "templatePdfUrl"> & {
     waiverVersion?: number;
-    waiverText?: string;
+    templatePdfUrl?: string;
   }
 ): Promise<{ filename: string; sha256: string; version: number }> {
   const current = await getCurrentWaiverContent();
   const version = input.waiverVersion ?? current.version;
-  const text = input.waiverText ?? current.text;
+  const templatePdfUrl = input.templatePdfUrl ?? current.templateFilename;
   const buffer = await buildSignedWaiverPdf({
     ...input,
     waiverVersion: version,
-    waiverText: text,
+    templatePdfUrl,
   });
   const sha256 = sha256Hex(buffer);
   const filename = await saveMemberWaiverPdf(buffer);

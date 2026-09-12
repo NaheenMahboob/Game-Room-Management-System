@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Waiver" ADD COLUMN IF NOT EXISTS "templatePdfUrl" TEXT;
+ALTER TABLE "Waiver" ALTER COLUMN "text" DROP NOT NULL;

@@ -59,6 +59,9 @@ next-env.d.ts
 # private signed waiver PDFs (outside public/)
 /storage/waivers/*
 !/storage/waivers/.gitkeep
+!/storage/waivers/templates/
+/storage/waivers/templates/*
+!/storage/waivers/templates/.gitkeep
 
 # private government ID photos (outside public/)
 /storage/government-ids/*
