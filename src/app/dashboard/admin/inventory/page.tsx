@@ -2,6 +2,7 @@
 
 /**
  * Admin inventory page: manage equipment types, add units, condition, deactivate, delete.
+ * Type chips and unit rows both use ScrollPanel so long catalogs stay page-friendly.
  * Deactivate / Delete stay disabled while an item has an open loan.
  *
  * @author Muhammad Naheen Mahboob
@@ -255,31 +256,35 @@ export default function AdminInventoryPage() {
             Add type
           </button>
         </div>
+        {/* Cap the type chip list so many categories do not stretch the page. */}
         {types.length > 0 ? (
-          <ul className="flex flex-wrap gap-2 pt-1 text-xs text-slate-400">
-            {types.map((t) => (
-              <li
-                key={t.id}
-                className={`inline-flex items-center gap-2 rounded-lg border px-2 py-1 ${
-                  t.isActive
-                    ? "border-slate-600 bg-slate-950"
-                    : "border-slate-800 opacity-60"
-                }`}
-              >
-                <span>
-                  {t.label}{" "}
-                  <span className="font-mono text-slate-500">({t.code})</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setTypeActive(t.id, !t.isActive)}
-                  className="text-teal-300 underline"
+          <ScrollPanel label="Equipment types" density="section">
+            <ul className="flex flex-wrap gap-2 text-xs text-slate-400">
+              {types.map((t) => (
+                <li
+                  key={t.id}
+                  className={`inline-flex items-center gap-2 rounded-lg border px-2 py-1 ${
+                    t.isActive
+                      ? "border-slate-600 bg-slate-950"
+                      : "border-slate-800 opacity-60"
+                  }`}
                 >
-                  {t.isActive ? "Deactivate" : "Reactivate"}
-                </button>
-              </li>
-            ))}
-          </ul>
+                  <span>
+                    {t.label}{" "}
+                    <span className="font-mono text-slate-500">({t.code})</span>
+                  </span>
+                  {/* Soft-hide from the add-item dropdown; existing units keep their type code. */}
+                  <button
+                    type="button"
+                    onClick={() => setTypeActive(t.id, !t.isActive)}
+                    className="text-teal-300 underline"
+                  >
+                    {t.isActive ? "Deactivate" : "Reactivate"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </ScrollPanel>
         ) : null}
       </form>
 
