@@ -7,7 +7,6 @@ import { useTranslations } from "next-intl";
 const LABELS: Record<Locale, string> = {
   en: "EN",
   ar: "عربي",
-  ur: "اردو",
 };
 
 export function LanguageSwitcher() {

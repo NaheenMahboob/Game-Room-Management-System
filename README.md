@@ -65,7 +65,7 @@ Keep these current when behavior or setup changes.
 - **Admin suite** — inventory, users, shifts, announcements/events, analytics charts, CSV reports, settings, append-only audit log
 - **RBAC** — MEMBER / VOLUNTEER / ADMIN with middleware and API guards
 - **Offline PWA** — volunteer dashboard queues key actions when Wi‑Fi drops
-- **i18n** — English, Arabic, and Urdu catalogs with a language switcher
+- **i18n** — English and Arabic catalogs with a language switcher
 
 ## Tech stack
 
@@ -74,7 +74,7 @@ Keep these current when behavior or setup changes.
 - **Auth:** JWT (`jose`) + bcrypt, HTTP-only cookies, middleware RBAC
 - **Validation:** Zod on API inputs
 - **PWA:** `@ducanh2912/next-pwa` + IndexedDB offline action queue
-- **i18n:** `next-intl` — English, Arabic, Urdu message catalogs
+- **i18n:** `next-intl` — English and Arabic message catalogs
 - **UI extras:** `recharts` (analytics), `html5-qrcode` / `qrcode.react` (QR)
 - **Deploy targets:** Vercel (or any Node host) + hosted Postgres
 
@@ -199,7 +199,7 @@ Change these passwords before any real deployment.
 ## Project structure
 
 ```
-├── messages/           # i18n catalogs (en, ar, ur)
+├── messages/           # i18n catalogs (en, ar)
 ├── prisma/             # schema, migrations, seed
 ├── public/             # static assets, PWA manifest
 ├── src/

@@ -3,7 +3,7 @@
  */
 
 /** Supported UI language codes. */
-export const locales = ["en", "ar", "ur"] as const;
+export const locales = ["en", "ar"] as const;
 
 /** Union of supported locale strings. */
 export type Locale = (typeof locales)[number];
@@ -20,4 +20,4 @@ export function isLocale(value: string): value is Locale {
 }
 
 /** Locales that use right-to-left layout. */
-export const rtlLocales: Locale[] = ["ar", "ur"];
+export const rtlLocales: Locale[] = ["ar"];

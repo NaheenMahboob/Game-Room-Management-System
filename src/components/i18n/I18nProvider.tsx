@@ -19,9 +19,8 @@ import {
 } from "@/i18n/config";
 import en from "../../../messages/en.json";
 import ar from "../../../messages/ar.json";
-import ur from "../../../messages/ur.json";
 
-const catalogs: Record<Locale, typeof en> = { en, ar, ur };
+const catalogs: Record<Locale, typeof en> = { en, ar };
 
 type LocaleContextValue = {
   locale: Locale;
