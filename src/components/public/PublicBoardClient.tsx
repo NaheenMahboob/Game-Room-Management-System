@@ -9,6 +9,7 @@ import { rtlLocales } from "@/i18n/config";
 
 type Availability = {
   type: string;
+  label?: string;
   total: number;
   available: number;
   inUse: number;
@@ -35,17 +36,6 @@ type Board = {
     eventDate: string;
   }[];
   refreshedAt: string;
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  PS5_CONSOLE: "PS5 Consoles",
-  PS5_CONTROLLER: "PS5 Controllers",
-  SWITCH_CONSOLE: "Switch Consoles",
-  SWITCH_CONTROLLER: "Switch Controllers",
-  TABLE_TENNIS: "Table Tennis",
-  FOOSBALL: "Foosball",
-  POOL: "Pool Table",
-  AIR_HOCKEY: "Air Hockey",
 };
 
 const DAY_ORDER = [
@@ -128,7 +118,7 @@ export function PublicBoardClient() {
               className="rounded-2xl border border-white/10 bg-slate-950/55 p-5"
             >
               <p className="text-lg font-semibold lg:text-xl">
-                {TYPE_LABELS[item.type] ?? item.type}
+                {item.label ?? item.type}
               </p>
               <p className="mt-3 text-4xl font-bold text-emerald-400">
                 {item.available}

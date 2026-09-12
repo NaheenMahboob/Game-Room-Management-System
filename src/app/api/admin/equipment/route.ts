@@ -11,22 +11,15 @@ import { withRole } from "@/lib/auth/api";
 import { jsonOk, jsonError, handleRouteError } from "@/lib/api/http";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/log";
+import { assertActiveEquipmentType } from "@/lib/services/equipmentTypes";
 
-/**
- * Allowed equipment catalog types.
- *
- * @author Muhammad Naheen Mahboob
- */
-const equipmentTypeEnum = z.enum([
-  "PS5_CONSOLE",
-  "PS5_CONTROLLER",
-  "SWITCH_CONSOLE",
-  "SWITCH_CONTROLLER",
-  "TABLE_TENNIS",
-  "FOOSBALL",
-  "POOL",
-  "AIR_HOCKEY",
-]);
+/** Equipment type code must match an active EquipmentTypeDef row. */
+const equipmentTypeCode = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[A-Z][A-Z0-9_]*$/i, "Invalid equipment type code");
 
 /**
  * Request body for creating an equipment item.
@@ -34,7 +27,7 @@ const equipmentTypeEnum = z.enum([
  * @author Muhammad Naheen Mahboob
  */
 const createSchema = z.object({
-  type: equipmentTypeEnum,
+  type: equipmentTypeCode,
   label: z.string().trim().min(2).max(120),
   conditionStatus: z
     .enum(["GOOD", "MINOR_ISSUE", "OUT_OF_ORDER"])
@@ -52,7 +45,7 @@ const updateSchema = z.object({
   label: z.string().trim().min(2).max(120).optional(),
   conditionStatus: z.enum(["GOOD", "MINOR_ISSUE", "OUT_OF_ORDER"]).optional(),
   isActive: z.boolean().optional(),
-  type: equipmentTypeEnum.optional(),
+  type: equipmentTypeCode.optional(),
 });
 
 /**
@@ -65,6 +58,7 @@ export const GET = withRole(["ADMIN"], async () => {
     const equipment = await prisma.equipment.findMany({
       orderBy: [{ type: "asc" }, { label: "asc" }],
       include: {
+        typeDef: { select: { code: true, label: true } },
         // One open loan is enough for the inventory UI “with …” label.
         loans: {
           where: { returnedAt: null },
@@ -87,12 +81,20 @@ export const GET = withRole(["ADMIN"], async () => {
 export const POST = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const body = createSchema.parse(await request.json());
-    const equipment = await prisma.equipment.create({ data: body });
+    const typeCode = body.type.toUpperCase();
+    await assertActiveEquipmentType(typeCode);
+    const equipment = await prisma.equipment.create({
+      data: {
+        type: typeCode,
+        label: body.label,
+        conditionStatus: body.conditionStatus,
+      },
+    });
     await writeAuditLog({
       actionType: "EQUIPMENT_CREATED",
       performedByUserId: session.sub,
       equipmentId: equipment.id,
-      details: body,
+      details: { ...body, type: typeCode },
     });
     return jsonOk({ equipment }, 201);
   } catch (error) {
@@ -109,10 +111,10 @@ export const POST = withRole(["ADMIN"], async ({ request, session }) => {
 export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
   try {
     const body = updateSchema.parse(await request.json());
-    const { id, ...data } = body;
+    const { id, ...rest } = body;
 
     // Deactivating while loaned out would strand the borrower in the desk UI.
-    if (data.isActive === false) {
+    if (rest.isActive === false) {
       const activeLoan = await prisma.loan.findFirst({
         where: { equipmentId: id, returnedAt: null },
       });
@@ -122,6 +124,18 @@ export const PATCH = withRole(["ADMIN"], async ({ request, session }) => {
           409
         );
       }
+    }
+
+    const data: {
+      label?: string;
+      conditionStatus?: "GOOD" | "MINOR_ISSUE" | "OUT_OF_ORDER";
+      isActive?: boolean;
+      type?: string;
+    } = { ...rest };
+    if (rest.type) {
+      const typeCode = rest.type.toUpperCase();
+      await assertActiveEquipmentType(typeCode);
+      data.type = typeCode;
     }
 
     const equipment = await prisma.equipment.update({ where: { id }, data });

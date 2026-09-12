@@ -18,17 +18,6 @@ enum Role {
   ADMIN
 }
 
-enum EquipmentType {
-  PS5_CONSOLE
-  PS5_CONTROLLER
-  SWITCH_CONSOLE
-  SWITCH_CONTROLLER
-  TABLE_TENNIS
-  FOOSBALL
-  POOL
-  AIR_HOCKEY
-}
-
 enum ConditionStatus {
   GOOD
   MINOR_ISSUE
@@ -47,6 +36,20 @@ enum TargetAudience {
   GENERAL
   MEMBERS
   VOLUNTEERS
+}
+
+// Admin-managed equipment categories (replaces the old EquipmentType enum).
+model EquipmentTypeDef {
+  id        String   @id @default(cuid())
+  // Stable slug used on Equipment.type and equipmentTimeLimits JSON keys.
+  code      String   @unique
+  label     String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  equipment Equipment[]
 }
 
 model User {
@@ -129,12 +132,13 @@ model Attendance {
 }
 
 model Equipment {
-  id              String          @id @default(cuid())
-  type            EquipmentType
-  label           String          @unique
-  conditionStatus ConditionStatus @default(GOOD)
-  isActive        Boolean         @default(true)
-  createdAt       DateTime        @default(now())
+  id              String           @id @default(cuid())
+  type            String
+  typeDef         EquipmentTypeDef @relation(fields: [type], references: [code])
+  label           String           @unique
+  conditionStatus ConditionStatus  @default(GOOD)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
 
   loans        Loan[]
   queueEntries EquipmentQueue[]

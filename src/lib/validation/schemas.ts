@@ -9,17 +9,13 @@ import { z } from "zod";
 /** Equipment condition values accepted on condition-update routes. */
 const conditionStatusEnum = z.enum(["GOOD", "MINOR_ISSUE", "OUT_OF_ORDER"]);
 
-/** Equipment category values for list/filter requests. */
-const equipmentTypeEnum = z.enum([
-  "PS5_CONSOLE",
-  "PS5_CONTROLLER",
-  "SWITCH_CONSOLE",
-  "SWITCH_CONTROLLER",
-  "TABLE_TENNIS",
-  "FOOSBALL",
-  "POOL",
-  "AIR_HOCKEY",
-]);
+/** Equipment category code (catalog slug, e.g. PS5_CONTROLLER or custom). */
+const equipmentTypeCode = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .regex(/^[A-Z][A-Z0-9_]*$/i, "Invalid equipment type code");
 
 /** Required YYYY-MM-DD (or parseable date) birth date for registration. */
 const dateOfBirthRequired = z
@@ -142,7 +138,7 @@ export const guestPassSchema = z.object({
 
 /** Query params for listing equipment (optional type and inactive filter). */
 export const equipmentListSchema = z.object({
-  type: equipmentTypeEnum.optional(),
+  type: equipmentTypeCode.optional(),
   includeInactive: z
     .enum(["true", "false"])
     .optional()

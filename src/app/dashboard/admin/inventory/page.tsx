@@ -1,14 +1,13 @@
 "use client";
 
 /**
- * Admin inventory page: add, condition-update, deactivate, and hard-delete equipment.
+ * Admin inventory page: manage equipment types, add units, condition, deactivate, delete.
  * Deactivate / Delete stay disabled while an item has an open loan.
- * Catalog rows are shown in a scroll panel so the list stays manageable.
  *
  * @author Muhammad Naheen Mahboob
  */
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/Toast";
 import { ScrollPanel } from "@/components/ui/ScrollPanel";
@@ -22,22 +21,24 @@ type Equipment = {
   id: string;
   label: string;
   type: string;
+  typeDef?: { code: string; label: string } | null;
   conditionStatus: string;
   isActive: boolean;
   loans: { member: { fullName: string } }[];
 };
 
-/** Catalog type options shown in the add-item form. */
-const TYPES = [
-  "PS5_CONSOLE",
-  "PS5_CONTROLLER",
-  "SWITCH_CONSOLE",
-  "SWITCH_CONTROLLER",
-  "TABLE_TENNIS",
-  "FOOSBALL",
-  "POOL",
-  "AIR_HOCKEY",
-];
+/**
+ * Catalog type from `GET /api/admin/equipment-types`.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
+type EquipmentType = {
+  id: string;
+  code: string;
+  label: string;
+  sortOrder: number;
+  isActive: boolean;
+};
 
 /**
  * Admin equipment catalog UI.
@@ -47,19 +48,34 @@ const TYPES = [
 export default function AdminInventoryPage() {
   const toast = useToast();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [types, setTypes] = useState<EquipmentType[]>([]);
   const [label, setLabel] = useState("");
-  const [type, setType] = useState("PS5_CONTROLLER");
+  const [type, setType] = useState("");
+  const [newTypeLabel, setNewTypeLabel] = useState("");
+  const [newTypeLimit, setNewTypeLimit] = useState("");
+
+  const activeTypes = useMemo(
+    () => types.filter((t) => t.isActive),
+    [types]
+  );
 
   /**
-   * Reloads the full equipment list from the admin API.
+   * Reloads equipment and type catalogs.
    *
    * @author Muhammad Naheen Mahboob
    */
   async function refresh() {
-    const data = await apiFetch<{ equipment: Equipment[] }>(
-      "/api/admin/equipment"
-    );
-    setEquipment(data.equipment);
+    const [equipData, typesData] = await Promise.all([
+      apiFetch<{ equipment: Equipment[] }>("/api/admin/equipment"),
+      apiFetch<{ types: EquipmentType[] }>("/api/admin/equipment-types"),
+    ]);
+    setEquipment(equipData.equipment);
+    setTypes(typesData.types);
+    const active = typesData.types.filter((t) => t.isActive);
+    setType((current) => {
+      if (current && active.some((t) => t.code === current)) return current;
+      return active[0]?.code ?? "";
+    });
   }
 
   useEffect(() => {
@@ -69,12 +85,54 @@ export default function AdminInventoryPage() {
   }, [toast]);
 
   /**
+   * Creates a new catalog type from the type form.
+   *
+   * @author Muhammad Naheen Mahboob
+   */
+  async function addType(e: FormEvent) {
+    e.preventDefault();
+    try {
+      const minutes = newTypeLimit.trim()
+        ? Number(newTypeLimit)
+        : undefined;
+      if (
+        minutes != null &&
+        (!Number.isFinite(minutes) || minutes <= 0)
+      ) {
+        toast.push("Time limit must be a positive number of minutes", "error");
+        return;
+      }
+      const data = await apiFetch<{ type: EquipmentType }>(
+        "/api/admin/equipment-types",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            label: newTypeLabel,
+            defaultTimeLimitMinutes: minutes,
+          }),
+        }
+      );
+      setNewTypeLabel("");
+      setNewTypeLimit("");
+      setType(data.type.code);
+      toast.push(`Type added: ${data.type.label}`);
+      await refresh();
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : "Failed", "error");
+    }
+  }
+
+  /**
    * Creates a new catalog item from the top form.
    *
    * @author Muhammad Naheen Mahboob
    */
   async function addItem(e: FormEvent) {
     e.preventDefault();
+    if (!type) {
+      toast.push("Add an equipment type first", "error");
+      return;
+    }
     try {
       await apiFetch("/api/admin/equipment", {
         method: "POST",
@@ -142,9 +200,88 @@ export default function AdminInventoryPage() {
     }
   }
 
+  /**
+   * Toggles a type active/inactive.
+   *
+   * @author Muhammad Naheen Mahboob
+   */
+  async function setTypeActive(id: string, isActive: boolean) {
+    try {
+      await apiFetch("/api/admin/equipment-types", {
+        method: "PATCH",
+        body: JSON.stringify({ id, isActive }),
+      });
+      toast.push(isActive ? "Type reactivated" : "Type deactivated");
+      await refresh();
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : "Failed", "error");
+    }
+  }
+
   return (
     <div className="space-y-5">
       <h2 className="text-xl font-semibold">Inventory ({equipment.length})</h2>
+
+      <form
+        onSubmit={addType}
+        className="space-y-3 rounded-2xl border border-slate-700 bg-slate-900/60 p-4"
+      >
+        <h3 className="text-sm font-semibold text-slate-200">
+          Add equipment type
+        </h3>
+        <p className="text-xs text-slate-400">
+          Use this when a new kind of device arrives (e.g. VR Headset). Then add
+          individual units below.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <input
+            value={newTypeLabel}
+            onChange={(e) => setNewTypeLabel(e.target.value)}
+            placeholder="Type name e.g. VR Headset"
+            className="min-h-11 min-w-[220px] flex-1 rounded-xl border border-slate-600 bg-slate-950 px-3"
+            required
+          />
+          <input
+            value={newTypeLimit}
+            onChange={(e) => setNewTypeLimit(e.target.value)}
+            placeholder="Loan limit (minutes, optional)"
+            inputMode="numeric"
+            className="min-h-11 w-48 rounded-xl border border-slate-600 bg-slate-950 px-3"
+          />
+          <button
+            type="submit"
+            className="min-h-11 rounded-xl bg-teal-600 px-4 font-semibold"
+          >
+            Add type
+          </button>
+        </div>
+        {types.length > 0 ? (
+          <ul className="flex flex-wrap gap-2 pt-1 text-xs text-slate-400">
+            {types.map((t) => (
+              <li
+                key={t.id}
+                className={`inline-flex items-center gap-2 rounded-lg border px-2 py-1 ${
+                  t.isActive
+                    ? "border-slate-600 bg-slate-950"
+                    : "border-slate-800 opacity-60"
+                }`}
+              >
+                <span>
+                  {t.label}{" "}
+                  <span className="font-mono text-slate-500">({t.code})</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setTypeActive(t.id, !t.isActive)}
+                  className="text-teal-300 underline"
+                >
+                  {t.isActive ? "Deactivate" : "Reactivate"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </form>
 
       <form
         onSubmit={addItem}
@@ -161,16 +298,23 @@ export default function AdminInventoryPage() {
           value={type}
           onChange={(e) => setType(e.target.value)}
           className="min-h-11 rounded-xl border border-slate-600 bg-slate-950 px-3"
+          required
+          disabled={activeTypes.length === 0}
         >
-          {TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
+          {activeTypes.length === 0 ? (
+            <option value="">No types yet</option>
+          ) : (
+            activeTypes.map((t) => (
+              <option key={t.code} value={t.code}>
+                {t.label}
+              </option>
+            ))
+          )}
         </select>
         <button
           type="submit"
-          className="min-h-11 rounded-xl bg-amber-500 px-4 font-semibold text-slate-950"
+          disabled={activeTypes.length === 0}
+          className="min-h-11 rounded-xl bg-amber-500 px-4 font-semibold text-slate-950 disabled:opacity-50"
         >
           Add item
         </button>
@@ -191,7 +335,7 @@ export default function AdminInventoryPage() {
                 <div>
                   <p className="font-semibold">{item.label}</p>
                   <p className="text-sm text-slate-400">
-                    {item.type} · {item.conditionStatus}
+                    {item.typeDef?.label ?? item.type} · {item.conditionStatus}
                     {item.loans[0]
                       ? ` · with ${item.loans[0].member.fullName}`
                       : ""}

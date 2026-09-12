@@ -3,15 +3,19 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-type EquipmentSeedType =
-  | "PS5_CONSOLE"
-  | "PS5_CONTROLLER"
-  | "SWITCH_CONSOLE"
-  | "SWITCH_CONTROLLER"
-  | "TABLE_TENNIS"
-  | "FOOSBALL"
-  | "POOL"
-  | "AIR_HOCKEY";
+const EQUIPMENT_TYPE_DEFS: { code: string; label: string; sortOrder: number }[] =
+  [
+    { code: "PS5_CONSOLE", label: "PS5 Console", sortOrder: 10 },
+    { code: "PS5_CONTROLLER", label: "PS5 Controller", sortOrder: 20 },
+    { code: "SWITCH_CONSOLE", label: "Switch Console", sortOrder: 30 },
+    { code: "SWITCH_CONTROLLER", label: "Switch Controller", sortOrder: 40 },
+    { code: "TABLE_TENNIS", label: "Table Tennis", sortOrder: 50 },
+    { code: "FOOSBALL", label: "Foosball", sortOrder: 60 },
+    { code: "POOL", label: "Pool Table", sortOrder: 70 },
+    { code: "AIR_HOCKEY", label: "Air Hockey", sortOrder: 80 },
+  ];
+
+type EquipmentSeedType = (typeof EQUIPMENT_TYPE_DEFS)[number]["code"];
 
 const EQUIPMENT_SEED: { type: EquipmentSeedType; label: string }[] = [
   ...Array.from({ length: 6 }, (_, i) => ({
@@ -246,6 +250,24 @@ async function main() {
   });
 
   console.log(`Member user ready: ${memberUser.email} (${memberUser.id})`);
+
+  for (const def of EQUIPMENT_TYPE_DEFS) {
+    await prisma.equipmentTypeDef.upsert({
+      where: { code: def.code },
+      update: {
+        label: def.label,
+        sortOrder: def.sortOrder,
+        isActive: true,
+      },
+      create: {
+        code: def.code,
+        label: def.label,
+        sortOrder: def.sortOrder,
+        isActive: true,
+      },
+    });
+  }
+  console.log(`Equipment types: ${EQUIPMENT_TYPE_DEFS.length}`);
 
   for (const item of EQUIPMENT_SEED) {
     await prisma.equipment.upsert({

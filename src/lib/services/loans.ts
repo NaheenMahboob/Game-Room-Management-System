@@ -22,6 +22,7 @@ import {
 } from "@/lib/settings";
 import { minutesBetween } from "@/lib/members/rules";
 import { flagMinorRegistrationAgeExpired } from "@/lib/services/members";
+import { getEquipmentTypeLabelMap } from "@/lib/services/equipmentTypes";
 import { withClientPhotoUrl } from "@/lib/uploads/memberPhoto";
 
 /** Prisma client or an open transaction used for loan queries. */
@@ -89,10 +90,11 @@ export async function listEquipment(options?: {
   const timeLimits = await getEquipmentTimeLimits();
   const equipment = await prisma.equipment.findMany({
     where: {
-      type: options?.type as never,
+      type: options?.type,
       isActive: options?.includeInactive ? undefined : true,
     },
     include: {
+      typeDef: { select: { code: true, label: true } },
       loans: {
         where: { returnedAt: null },
         include: {
@@ -178,11 +180,15 @@ export async function listEquipment(options?: {
 
 /** Aggregates equipment counts by type (available, in use, condition buckets). */
 export async function getAvailabilityByType() {
-  const items = await listEquipment({ includeInactive: false });
+  const [items, labelMap] = await Promise.all([
+    listEquipment({ includeInactive: false }),
+    getEquipmentTypeLabelMap(),
+  ]);
   const byType: Record<
     string,
     {
       type: string;
+      label: string;
       total: number;
       available: number;
       inUse: number;
@@ -196,6 +202,7 @@ export async function getAvailabilityByType() {
   for (const item of items) {
     const bucket = (byType[item.type] ??= {
       type: item.type,
+      label: labelMap[item.type] ?? item.type,
       total: 0,
       available: 0,
       inUse: 0,
