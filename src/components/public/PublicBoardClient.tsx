@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * TV / lobby public status board.
+ * Header CTA is “Member login” for guests, or “My portal” when already signed in.
+ *
+ * @author Muhammad Naheen Mahboob
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -48,7 +55,12 @@ const DAY_ORDER = [
   "sunday",
 ];
 
-export function PublicBoardClient() {
+export function PublicBoardClient({
+  signedIn = false,
+}: {
+  /** True when the browser already has a member portal session. */
+  signedIn?: boolean;
+}) {
   const t = useTranslations("board");
   const { locale } = useLocaleState();
   const [board, setBoard] = useState<Board | null>(null);
@@ -89,11 +101,12 @@ export function PublicBoardClient() {
           </div>
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
+            {/* Guests get login; signed-in members return to their portal profile. */}
             <Link
-              href="/portal/login"
+              href={signedIn ? "/portal" : "/portal/login"}
               className="min-h-12 rounded-xl border border-white/15 bg-slate-950/40 px-4 py-3 text-sm font-semibold text-teal-100"
             >
-              {t("memberLogin")}
+              {signedIn ? t("myPortal") : t("memberLogin")}
             </Link>
           </div>
         </header>
